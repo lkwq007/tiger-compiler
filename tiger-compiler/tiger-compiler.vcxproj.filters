@@ -78,6 +78,15 @@
     <ClInclude Include="include\translate.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="include\semant.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\allheader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\env.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="absyn.c">
@@ -141,6 +150,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="escape.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="semant.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="env.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

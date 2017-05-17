@@ -145,9 +145,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\absyn.h" />
+    <ClInclude Include="include\allheader.h" />
     <ClInclude Include="include\assem.h" />
     <ClInclude Include="include\canon.h" />
     <ClInclude Include="include\color.h" />
+    <ClInclude Include="include\env.h" />
     <ClInclude Include="include\errormsg.h" />
     <ClInclude Include="include\escape.h" />
     <ClInclude Include="include\flowgraph.h" />
@@ -157,6 +159,7 @@
     <ClInclude Include="include\prabsyn.h" />
     <ClInclude Include="include\printtree.h" />
     <ClInclude Include="include\regalloc.h" />
+    <ClInclude Include="include\semant.h" />
     <ClInclude Include="include\symbol.h" />
     <ClInclude Include="include\table.h" />
     <ClInclude Include="include\temp.h" />
@@ -170,6 +173,7 @@
     <ClCompile Include="absyn.c" />
     <ClCompile Include="assem.c" />
     <ClCompile Include="canon.c" />
+    <ClCompile Include="env.c" />
     <ClCompile Include="errormsg.c" />
     <ClCompile Include="escape.c" />
     <ClCompile Include="graph.c" />
@@ -181,6 +185,7 @@
     <ClCompile Include="prabsyn.c" />
     <ClCompile Include="printtree.c" />
     <ClCompile Include="runtime.c" />
+    <ClCompile Include="semant.c" />
     <ClCompile Include="symbol.c" />
     <ClCompile Include="table.c" />
     <ClCompile Include="temp.c" />
