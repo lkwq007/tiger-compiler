@@ -16,10 +16,36 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	case A_varExp:
 	{
 		struct expty exp;
+		A_var var = a->u.var;
+		E_enventry binding;
+		switch (var->kind)
+		{
+		case A_simpleVar:
+		{
+			binding = S_look(venv, var->u.simple);
+			if (binding == NULL)
+			{
+				EM_error(a->pos, "Undefined var");
+			}
+			else
+			{
+				return expTy(NULL, binding->u.var.ty);
+			}
+			break;
+		}
+		case A_fieldVar:
+		{
+			binding = S_look(venv, var->u.field.sym);
+			
+		}
+			
+		default:
+			break;
+		}
 	}
 	case A_nilExp:
 	{
-
+		return expTy(NULL, Ty_Nil());
 	}
 	case A_intExp:
 	{
