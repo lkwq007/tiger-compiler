@@ -9,6 +9,17 @@ struct expty expTy(Tr_exp exp, Ty_ty ty)
 	return e;
 }
 
+struct expty transExpList(S_table venv, S_table tenv, A_expList list)
+{
+	if (list == NULL)
+	{
+		return expTy(NULL,NULL);
+	}
+	struct expty exp = transExp(venv, tenv, list->head);
+	struct expty inner = transExpList(venv, tenv, list->tail);
+	return expTy(NULL, Ty_TyList(exp.ty, inner.ty));
+}
+
 struct expty transExp(S_table venv, S_table tenv, A_exp a)
 {
 	switch (a->kind)
@@ -16,8 +27,9 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	case A_varExp:
 	{
 		struct expty exp;
-		A_var var = a->u.var;
-		E_enventry binding;
+		exp = transVar(venv, tenv, a->u.var);
+		return exp;
+		/* I am so dumb
 		switch (var->kind)
 		{
 		case A_simpleVar:
@@ -35,13 +47,19 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		}
 		case A_fieldVar:
 		{
+			exp=transExp()
 			binding = S_look(venv, var->u.field.sym);
 			
 		}
-			
+		case A_subscriptVar:
+		{
+			binding = S_look(venv, var->u.subscript.var
+
+		}
 		default:
 			break;
 		}
+		*/
 	}
 	case A_nilExp:
 	{
@@ -57,7 +75,30 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_callExp:
 	{
-
+		struct expty exp;
+		A_expList list;
+		Ty_tyList tylist;
+		bool args_matched = TRUE;
+		E_enventry binding = S_look(venv, a->u.call.func);
+		//exp = transExpList(venv, tenv, a->u.call.args);
+		for (list = a->u.call.args, tylist = binding->u.fun.formals; list&&tylist; list = list->tail, tylist = tylist->tail)
+		{
+			exp = transExp(venv, tenv, list->head);
+			if (exp.ty!=tylist->head)
+			{
+				args_matched = FALSE;
+				break;
+			}
+		}
+		if (binding&&binding->kind == E_funEntry&&args_matched)
+		{
+			return expTy(NULL, binding->u.fun.result);
+		}
+		else
+		{
+			EM_error(a->pos, "Error function name or args types");
+		}
+		break;
 	}
 	case A_opExp:
 	{
@@ -104,7 +145,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_recordExp:
 	{
-
+		
 	}
 	case A_seqExp:
 	{
@@ -116,18 +157,42 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_assignExp:
 	{
-
+		struct expty var = transVar(venv, tenv, a->u.assign.var);
+		struct expty exp = transExp(venv, tenv, a->u.assign.exp);
+		if (var.ty == exp.ty)
+		{
+			return expTy(NULL, Ty_Void());
+		}
+		else
+		{
+			EM_error(a->pos, "Error, assign type not matched");
+		}
+		break;
 	}
 	case A_ifExp:
 	{
-
+		struct expty test = transExp(venv, tenv, a->u.iff.test);
+		struct expty then = transExp(venv, tenv, a->u.iff.then);
+		struct expty elsee = transExp(venv, tenv, a->u.iff.elsee);
+		if (test.ty->kind!=Ty_int)
+		{
+			EM_error(a->pos, "Error if test");
+		}
+		return expTy(NULL, Ty_Void());
 	}
 	case A_whileExp:
 	{
-
+		struct expty test = transExp(venv, tenv, a->u.whilee.test);
+		struct expty body = transExp(venv, tenv, a->u.whilee.body);
+		if (test.ty->kind != Ty_int)
+		{
+			EM_error(a->pos, "Error while test");
+		}
+		return expTy(NULL, Ty_Void());
 	}
 	case A_forExp:
 	{
+		struct expty test = transExp(venv, tenv, a->u.whilee.test);
 
 	}
 	case A_breakExp:
