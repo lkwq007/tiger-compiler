@@ -1,5 +1,8 @@
 #include "semant.h"
 #include "allheader.h"
+#include "absyn.h"
+#define NULL ( (void *) 0)
+
 /* semant.c */
 
 // local function to skip past all the Names

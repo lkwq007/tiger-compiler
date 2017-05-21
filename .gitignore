@@ -240,3 +240,8 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+
+# vscode and apple file stuff
+.vscode/
+.DS_store
+
