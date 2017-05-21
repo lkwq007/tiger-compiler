@@ -32,37 +32,6 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		struct expty exp;
 		exp = transVar(venv, tenv, a->u.var);
 		return exp;
-		/* I am so dumb
-		switch (var->kind)
-		{
-		case A_simpleVar:
-		{
-			binding = S_look(venv, var->u.simple);
-			if (binding == NULL)
-			{
-				EM_error(a->pos, "Undefined var");
-			}
-			else
-			{
-				return expTy(NULL, binding->u.var.ty);
-			}
-			break;
-		}
-		case A_fieldVar:
-		{
-			exp=transExp()
-			binding = S_look(venv, var->u.field.sym);
-			
-		}
-		case A_subscriptVar:
-		{
-			binding = S_look(venv, var->u.subscript.var
-
-		}
-		default:
-			break;
-		}
-		*/
 	}
 	case A_nilExp:
 	{
@@ -231,7 +200,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 	{
 	case A_simpleVar: {
 		E_enventry x = S_look(venv, v->u.simple);
-		if (x&&x->kind == E_VarEntry)
+		if (x&&x->kind == E_varEntry)
 		{
 			return expTy(NULL, actual_ty(x->u.var.ty));
 		}
@@ -242,7 +211,41 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		}
 	}
 	case A_fieldVar: {
-
+		bool is_exist = FALSE;
+		struct expty field = transVar(venv, tenv, v->u.field.var);
+		if (field.ty->kind != Ty_record)
+		{
+			EM_error(v->u.field.var->pos, "variable with field but not a record");
+		}
+		Ty_fieldList list;
+		for (list = field.ty->u.record; list; list = list->tail)
+		{
+			if (list->head->name == v->u.field.sym)
+			{
+				is_exist = TRUE;
+				break;
+			}
+		}
+		if (!is_exist)
+		{
+			EM_error(v->pos, "record not contain this field");
+			return expTy(NULL, Ty_Int());
+		}
+		return expTy(NULL, list->head->ty);
+	}
+	case A_subscriptVar: {
+		struct expty ptr = transVar(venv, tenv, v->u.subscript);
+		struct expty exp = transExp(venv, tenv, v->u.subscript.exp);
+		if (ptr.ty->kind != Ty_array)
+		{
+			EM_error(v->pos, "variable with subscript is not an array");
+			return expTy(NULL, Ty_Int());
+		}
+		if (exp.ty->kind != Ty_int)
+		{
+			EM_error(v->u.subscript.exp->pos, "subscript should be interger");
+		}
+		return expTy(NULL, ptr.ty->u.array);
 	}
 	}
 	assert(0);
@@ -250,6 +253,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 
 void transDec(S_table venv, S_table tenv, A_dec d)
 {
+	// 认为 d 是已经被完整构建的声明，解析时构建
 	switch (d->kind)
 	{
 	case A_varDec:
@@ -258,11 +262,13 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		S_enter(venv, d->u.var.var, E_VarEntry(e.ty));
 		break;
 	}
+	// Todo 递归的类型定义处理
 	case A_typeDec:
 	{
 		S_enter(tenv, d->u.type->head->name, transTy(tenv,d->u.type->head->ty));
 		break;
 	}
+	// Todo 递归函数以及多函数处理
 	case A_functionDec:
 	{
 		A_fundec f = d->u.function->head;
