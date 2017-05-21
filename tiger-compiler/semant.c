@@ -1,5 +1,8 @@
 #include "semant.h"
 #include "allheader.h"
+#include "absyn.h"
+#define NULL ( (void *) 0)
+
 /* semant.c */
 struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
