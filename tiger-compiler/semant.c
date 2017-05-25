@@ -4,6 +4,17 @@
 #define NULL ( (void *) 0)
 
 /* semant.c */
+
+// local function to skip past all the Names
+Ty_ty actual_ty(Ty_ty dummy)
+{
+	if (dummy->kind == Ty_name)
+	{
+		return actual_ty(dummy->u.name.ty);
+	}
+	return dummy;
+}
+
 struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
 	struct expty e;
@@ -12,6 +23,7 @@ struct expty expTy(Tr_exp exp, Ty_ty ty)
 	return e;
 }
 
+// 写完后发现没用了
 struct expty transExpList(S_table venv, S_table tenv, A_expList list)
 {
 	if (list == NULL)
@@ -251,6 +263,11 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 	assert(0);
 }
 
+Ty_ty transTy(S_table tenv, A_ty a)
+{
+
+}
+
 void transDec(S_table venv, S_table tenv, A_dec d)
 {
 	// 认为 d 是已经被完整构建的声明，解析时构建
@@ -259,7 +276,20 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 	case A_varDec:
 	{
 		struct expty e = transExp(venv, tenv, d->u.var.init);
-		S_enter(venv, d->u.var.var, E_VarEntry(e.ty));
+		// 初始化的类型检查我还没有太好的思路
+		if (d->u.var.typ != NULL)
+		{
+			Ty_ty type = S_look(tenv, d->u.var.typ);
+			if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
+			{
+				EM_error(d->pos, "Init not compatible");
+			}
+			S_enter(venv, d->u.var.var, E_VarEntry(type));
+		}
+		else
+		{
+			S_enter(venv, d->u.var.var, E_VarEntry(e.ty));
+		}
 		break;
 	}
 	// Todo 递归的类型定义处理
