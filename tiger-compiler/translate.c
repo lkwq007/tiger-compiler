@@ -167,6 +167,20 @@ static Cx unCx(Tr_exp e)
 
 }
 
+static void doPatch(patchList pList, Temp_label label)
+{
+    for (; pList; pList = pList->tail)
+        *(pList->head) = label;
+}
+
+static patchList joinPatch(patchList fList, patchList sList)
+{
+    if (!fList) return sList;
+    for (; fList->tail; fList = fList->tail);
+    fList->tail = sList;
+    return fList;
+}
+
 Tr_level Tr_outermost(void) {
     if (!outer)
         outer = Tr_newLevel(NULL, Temp_newlabel(), NULL);
@@ -273,25 +287,89 @@ Tr_exp Tr_relExp(int op, Tr_exp left, Tr_exp right) {
     patchList falses = PatchList(&cond->u.CJUMP.false, NULL);
     return Tr_Cx(trues, falses, cond);
 }
-Tr_exp Tr_stringRelExp(int op, Tr_exp left, Tr_exp right){
+Tr_exp Tr_stringRelExp(int op, Tr_exp left, Tr_exp right) {
     return F_externalCall("stringCompare", T_ExpList(left, T_ExpList(right, NULL)));
 }
-Tr_exp Tr_recordExp(Tr_expList fields, int size);
-Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp init);
-Tr_exp Tr_seqExp(Tr_expList stmts);
-Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then, Tr_exp else_);
-Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body);
+Tr_exp Tr_recordExp(Tr_expList fields, int size) {
+    Temp_temp r = Temp_newtemp();
+    T_stm alloc = T_Move(T_Temp(r),
+                         F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL)));
+    T_stm seq = NULL;
+    for (int i=size - 1; fields; fields = fields->tail, i--)
+        seq = T_Seq(T_Move(T_Mem(T_Binop(T_plus, T_Temp(r), T_Const(i * F_wordSize))),
+                           unEx(fields->head)), seq);
+    return Tr_Ex(T_Eseq(T_Seq(alloc, seq), T_Temp(r)));
+}
+Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp init) {
+    return Tr_Ex(F_externalCall(String("initArray"),
+                                T_ExpList(unEx(size), T_ExpList(unEx(init), NULL))));
+}
+Tr_exp Tr_seqExp(Tr_expList stmts) {
+    return Tr_Ex(Tr_expListConversion(stmts));
+}
+// auxiliary function for recursively define Tr_seqExp
+T_exp Tr_expListConversion(Tr_expList stmts) {
+    if(!stmts)
+        return NULL; //whether return NULL affects tree conversion? suppose not
+    else
+        return T_Eseq(T_Exp(unEx(stmts->head)), Tr_seqExp(stmts->tail));
+}
+// ifExp is hard to write
+Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
+    Temp_label t = Temp_newlabel(), f = Temp_newlabel(), join = Temp_newlabel();
+    Cx condition = unCx(cond);
+    T_exp then_ex = unEx(then_);
+    T_exp else_ex = unEx(else_);
+    Temp_temp r = Temp_newtemp();
+    Tr_exp result = NULL;
+    T_stm joinJump = T_Jump(T_Name(join), Temp_LabelList(join, NULL));
+    doPatch(condition->trues, t);
+    doPatch(condition->falses, f);
+    if(then_->kind == Tr_ex)
+        return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(r), then_ex), T_Eseq(r, T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(r), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), Temp_Temp(r)))))))))));
+    else if(then_->kind == Tr_nx) {
+        T_stm else_stm = unNx(else_), then_stm = unNx(then_);
+        return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
+    }
+}
+// move the condition check to latter part to avoid bugs out of overflowing
+Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body){
+    Temp_label start = Temp_newlabel(), end = Temp_newlabel(), test = Temp_newlabel();
+    T_exp cond_ex = unEx(cond);
+    T_stm body_nx = unNx(body);
+    return Tr_Ex(T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0))))))));
+}
 Tr_exp Tr_forExp(Tr_access access,
                  Tr_exp low,
                  Tr_exp high,
-                 Tr_exp body);
-Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs){
+                 Tr_exp body){
+
+                 }
+Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs) {
     return Tr_Nx(T_Move(unEx(lhs), unEx(rhs)));
 }
 
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
     return Tr_Ex(F_Exp(access->access->u.reg));
 }
-Tr_exp Tr_fieldVar(Tr_exp record, int index){
+Tr_exp Tr_fieldVar(Tr_exp record, int index) {
     return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(record), T_Const(index * F_wordSize))));
+}
+Tr_exp Tr_noExp() {
+    return Tr_Ex(Const(0));
+}
+
+void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals)
+{
+	F_frag pfrag = F_ProcFrag(unNx(body), level->frame);
+	fragList = F_FragList(pfrag, fragList);
+}
+
+F_fragList Tr_getResult(void)
+{
+	F_fragList cursor = NULL, prev = NULL;
+	for (cursor = stringList; cursor; cursor = cursor->tail)
+		prev = cursor;
+	if (prev) prev->tail = fragList;
+	return stringList ? stringList : fragList;
 }
