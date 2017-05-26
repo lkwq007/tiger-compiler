@@ -71,6 +71,7 @@ struct expty transExpList(S_table venv, S_table tenv, A_expList list)
 	return expTy(NULL, Ty_TyList(exp.ty, inner.ty));
 }
 
+// return exp in Tr_exp with its type from A_exp
 struct expty transExp(S_table venv, S_table tenv, A_exp a)
 {
 	switch (a->kind)
@@ -353,6 +354,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	assert(0);
 }
 
+// return var in Tr_exp with its type from A_var
 struct expty transVar(S_table venv, S_table tenv, A_var v)
 {
 	switch (v->kind)
@@ -366,8 +368,8 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		else
 		{
 			EM_error(v->pos, "undefined variable %s", S_name(v->u.simple));
-			return expTy(NULL, Ty_Int());
 		}
+		break;
 	}
 	case A_fieldVar: {
 		bool is_exist = FALSE;
@@ -385,12 +387,12 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 				break;
 			}
 		}
-		if (!is_exist)
+		if (is_exist)
 		{
-			EM_error(v->pos, "record not contain this field");
-			return expTy(NULL, Ty_Int());
+			return expTy(NULL, list->head->ty);
 		}
-		return expTy(NULL, list->head->ty);
+		EM_error(v->pos, "record not contain this field");
+		break;
 	}
 	case A_subscriptVar: {
 		struct expty ptr = transVar(venv, tenv, v->u.subscript);
@@ -398,16 +400,17 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		if (ptr.ty->kind != Ty_array)
 		{
 			EM_error(v->pos, "variable with subscript is not an array");
-			return expTy(NULL, Ty_Int());
+			break;
 		}
 		if (exp.ty->kind != Ty_int)
 		{
 			EM_error(v->u.subscript.exp->pos, "subscript should be interger");
+			break;
 		}
 		return expTy(NULL, ptr.ty->u.array);
 	}
 	}
-	assert(0);
+	return expTy(NULL, Ty_Int());
 }
 
 // return Ty_ty from A_ty
@@ -418,8 +421,6 @@ Ty_ty transTy(S_table tenv, A_ty a)
 	case A_nameTy:
 	case A_recordTy:
 	case A_arrayTy:
-	default:
-		break;
 	}
 	assert(0);
 }
@@ -436,7 +437,8 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		if (d->u.var.typ != NULL)
 		{
 			Ty_ty type = S_look(tenv, d->u.var.typ);
-			if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
+			if(!is_equal_ty(type,e.ty))
+			//if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
 			{
 				EM_error(d->pos, "Init not compatible");
 			}
@@ -444,14 +446,35 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		}
 		else
 		{
+			if (e.ty->kind == Ty_nil)
+			{
+				EM_error(d->pos, "Without type dec, init cannot be nil");
+				break;
+			}
 			S_enter(venv, d->u.var.var, E_VarEntry(e.ty));
 		}
 		break;
 	}
-	// Todo 递归的类型定义处理
+	// 递归的类型定义处理
 	case A_typeDec:
 	{
-		S_enter(tenv, d->u.type->head->name, transTy(tenv, d->u.type->head->ty));
+		A_nametyList list = d->u.type;
+		Ty_tyList tylist=NULL,temp;
+		Ty_ty type;
+		for (list; list; list = list->tail)
+		{
+			type = Ty_Name(list->head->name, NULL);
+			temp = Ty_TyList(type, NULL);
+			temp->tail = tylist;
+			tylist = temp;
+			S_enter(tenv, list->head->name, type);
+		}
+		list = d->u.type;
+		for (; list; list = list->tail, tylist = tylist->tail)
+		{
+			type = tylist->head;
+			type->u.name.ty = transTy(tenv, list->head->ty);
+		}
 		break;
 	}
 	// Todo 递归函数以及多函数处理
