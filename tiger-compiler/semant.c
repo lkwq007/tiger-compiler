@@ -58,6 +58,14 @@ Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 	return Ty_TyList(S_look_ty(tenv, params->head->typ), makeFormalTyList(tenv, params->tail));
 }
 
+Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
+{
+	if (record == NULL)
+	{
+		return NULL;
+	}
+	return Ty_TyList(S_look_ty(tenv, record->head->typ), makeFieldTyList(tenv, record->tail));
+}
 // construct expty
 struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
@@ -427,8 +435,38 @@ Ty_ty transTy(S_table tenv, A_ty a)
 	switch (a->kind)
 	{
 	case A_nameTy:
+	{
+		Ty_ty type = S_look_ty(tenv, a->u.name);
+		if (type == NULL)
+		{
+			EM_error(a->pos, "Undefined nameTy %s", S_name(a->u.name));
+			type = Ty_Int();
+		}
+		return type;
+	}
 	case A_recordTy:
+	{
+		Ty_tyList temp, list = makeFieldTyList(tenv, a->u.record);
+		temp = list;
+		for (temp; temp; temp = temp->tail)
+		{
+			if (temp->head == NULL)
+			{
+				EM_error(a->pos, "Undefined field type in recordTy");
+			}
+		}
+		return Ty_Record(list);
+	}
 	case A_arrayTy:
+	{
+		Ty_ty type = S_look_ty(tenv, a->u.array);
+		if (type == NULL)
+		{
+			EM_error(a->pos, "Undefined arrayTy %s", S_name(a->u.name));
+			type = Ty_Int();
+		}
+		return Ty_Array(type);
+	}
 	}
 	assert(0);
 }
