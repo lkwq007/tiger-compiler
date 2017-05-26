@@ -1,8 +1,6 @@
 /* semant.c */
 #include "semant.h"
 #include "allheader.h"
-#include "absyn.h"
-#define NULL ( (void *) 0)
 
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
 bool is_equal_ty(Ty_ty type, Ty_ty exp)
@@ -48,6 +46,16 @@ Ty_ty S_look_ty(S_table tenv, S_symbol sym)
 		return actual_ty(type);
 	}
 	return NULL;
+}
+
+// make formal tylist from f args
+Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
+{
+	if (params == NULL)
+	{
+		return NULL;
+	}
+	return Ty_TyList(S_look_ty(tenv, params->head->typ), makeFormalTyList(tenv, params->tail));
 }
 
 // construct expty
@@ -461,39 +469,95 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		A_nametyList list = d->u.type;
 		Ty_tyList tylist=NULL,temp;
 		Ty_ty type;
+		// TODO check the order of tylist
 		for (list; list; list = list->tail)
 		{
 			type = Ty_Name(list->head->name, NULL);
-			temp = Ty_TyList(type, NULL);
-			temp->tail = tylist;
-			tylist = temp;
+			if (tylist == NULL)
+			{
+				tylist= Ty_TyList(type, NULL);
+				temp = tylist;
+			}
+			else
+			{
+				temp->tail = Ty_TyList(type, NULL);
+				temp = temp->tail;
+			}
 			S_enter(tenv, list->head->name, type);
 		}
+		temp = tylist;
 		list = d->u.type;
 		for (; list; list = list->tail, tylist = tylist->tail)
 		{
 			type = tylist->head;
 			type->u.name.ty = transTy(tenv, list->head->ty);
 		}
-		break;
-	}
-	// Todo 递归函数以及多函数处理
-	case A_functionDec:
-	{
-		A_fundec f = d->u.function->head;
-		Ty_ty resultTy = S_look(tenv, f->result);
-		Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
-		S_enter(venv, f->name, E_FunEntry(formalTys, resultTy));
-		S_beginScope(venv);
+		tylist = temp;
+		// checking loop recursive
+		for (; tylist; tylist = tylist->tail)
 		{
-			A_fieldList l;
-			Ty_tyList t;
-			for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail)
+			type = tylist->head;
+			type = type->u.name.ty;
+			while (type&&type->kind == Ty_name)
 			{
-				S_enter(venv, l->head->name, E_VarEntry(t->head));
+				if (type->u.name.sym == tylist->head->u.name.sym)
+				{
+					EM_error(d->pos, "Error type def loop in %s", type->u.name.sym);
+					break;
+				}
+				type = type->u.name.ty;
 			}
 		}
-		//transExp(venv, tenv, d->u.function->body);
+		break;
+	}
+	// 递归函数以及多函数处理
+	case A_functionDec:
+	{
+		A_fundecList list = d->u.function;
+		for (list; list; list = list->tail)
+		{
+			A_fundec f = d->u.function->head;
+			Ty_ty resultTy = S_look(tenv, f->result);
+			if (resultTy == NULL)
+			{
+				EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
+				resultTy = Ty_Void();
+			}
+			// undefined formal types?
+			Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
+			S_enter(venv, f->name, E_FunEntry(formalTys, resultTy));
+		}
+		for (list = d->u.function; list; list = list->tail)
+		{
+			A_fundec f = d->u.function->head;
+			E_enventry func = S_look(venv, f->name);
+			Ty_ty resultTy = func->u.fun.result;
+			Ty_tyList formalTys = func->u.fun.formals;
+			struct expty body;
+			S_beginScope(venv);
+			{
+				A_fieldList l;
+				Ty_tyList t;
+				for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail)
+				{
+					if (t->head == NULL)
+					{
+						S_enter(venv, l->head->name, E_VarEntry(t->head));
+						EM_error(f->pos, "Undefined formal type %s in %s", l->head->name, f->name);
+					}
+					else
+					{
+						S_enter(venv, l->head->name, E_VarEntry(t->head));
+					}
+				}
+			}
+			body = transExp(venv, tenv, f->body);
+			if (!is_equal_ty(resultTy, body.ty))
+			{
+				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
+			}
+			S_endScope(venv);
+		}
 		break;
 	}
 	}
