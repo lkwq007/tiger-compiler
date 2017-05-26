@@ -467,40 +467,28 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 	case A_typeDec:
 	{
 		A_nametyList list = d->u.type;
-		Ty_tyList tylist=NULL,temp;
-		Ty_ty type;
-		// TODO check the order of tylist
+		Ty_ty type, temp;
 		for (list; list; list = list->tail)
 		{
 			type = Ty_Name(list->head->name, NULL);
-			if (tylist == NULL)
-			{
-				tylist= Ty_TyList(type, NULL);
-				temp = tylist;
-			}
-			else
-			{
-				temp->tail = Ty_TyList(type, NULL);
-				temp = temp->tail;
-			}
 			S_enter(tenv, list->head->name, type);
 		}
-		temp = tylist;
 		list = d->u.type;
-		for (; list; list = list->tail, tylist = tylist->tail)
+		for (; list; list = list->tail)
 		{
-			type = tylist->head;
+			type = S_look_ty(tenv, list->head->name);
 			type->u.name.ty = transTy(tenv, list->head->ty);
 		}
-		tylist = temp;
-		// checking loop recursive
-		for (; tylist; tylist = tylist->tail)
+		// checking looping recursive
+		list = d->u.type;
+		for (; list; list = list->tail)
 		{
-			type = tylist->head;
+			type = S_look_ty(tenv, list->head->name);
+			temp = type;
 			type = type->u.name.ty;
 			while (type&&type->kind == Ty_name)
 			{
-				if (type->u.name.sym == tylist->head->u.name.sym)
+				if (type->u.name.sym == temp->u.name.sym)
 				{
 					EM_error(d->pos, "Error type def loop in %s", type->u.name.sym);
 					break;
