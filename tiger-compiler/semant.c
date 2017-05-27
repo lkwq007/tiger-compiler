@@ -61,6 +61,7 @@ static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 	temp = S_look_ty(tenv, params->head->typ);
 	if (temp == NULL)
 	{
+		// won't return NULL ty
 		EM_error(params->head->pos, "Undefined type %s of formal %s", params->head->typ, params->head->name);
 		temp = Ty_Int();
 	}
@@ -78,6 +79,7 @@ static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 	temp = S_look_ty(tenv, record->head->typ);
 	if (temp == NULL)
 	{
+		// won't return NULL ty
 		EM_error(record->head->pos, "Undefined type %s of field %s", record->head->typ, record->head->name);
 		temp = Ty_Int();
 	}
@@ -85,7 +87,7 @@ static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 }
 
 // construct expty
-struct expty expTy(Tr_exp exp, Ty_ty ty)
+static struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
 	struct expty e;
 	e.exp = exp;
@@ -430,7 +432,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		break;
 	}
 	case A_subscriptVar: {
-		struct expty ptr = transVar(venv, tenv, v->u.subscript);
+		struct expty ptr = transVar(venv, tenv, v->u.subscript.var);
 		struct expty exp = transExp(venv, tenv, v->u.subscript.exp);
 		if (ptr.ty->kind != Ty_array)
 		{
