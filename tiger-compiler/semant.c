@@ -1,9 +1,10 @@
 /* semant.c */
 #include "semant.h"
+#include "translate.h"
 #include "allheader.h"
 
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
-bool is_equal_ty(Ty_ty type, Ty_ty exp)
+static bool is_equal_ty(Ty_ty type, Ty_ty exp)
 {
 	type = actual_ty(type);
 	exp = actual_ty(type);
@@ -28,7 +29,7 @@ bool is_equal_ty(Ty_ty type, Ty_ty exp)
 }
 
 // local function to skip past all the Names
-Ty_ty actual_ty(Ty_ty dummy)
+static Ty_ty actual_ty(Ty_ty dummy)
 {
 	if (dummy->kind == Ty_name)
 	{
@@ -38,7 +39,7 @@ Ty_ty actual_ty(Ty_ty dummy)
 }
 
 // lookup actual ty in tenv
-Ty_ty S_look_ty(S_table tenv, S_symbol sym)
+static Ty_ty S_look_ty(S_table tenv, S_symbol sym)
 {
 	Ty_ty type = S_look(tenv, sym);
 	if (type)
@@ -48,24 +49,41 @@ Ty_ty S_look_ty(S_table tenv, S_symbol sym)
 	return NULL;
 }
 
+// error checking in makelist
 // make formal tylist from f args
-Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
+static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 {
+	Ty_ty temp;
 	if (params == NULL)
 	{
 		return NULL;
 	}
-	return Ty_TyList(S_look_ty(tenv, params->head->typ), makeFormalTyList(tenv, params->tail));
+	temp = S_look_ty(tenv, params->head->typ);
+	if (temp == NULL)
+	{
+		EM_error(params->head->pos, "Undefined type %s of formal %s", params->head->typ, params->head->name);
+		temp = Ty_Int();
+	}
+	return Ty_TyList(temp, makeFormalTyList(tenv, params->tail));
 }
 
-Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
+// make field tylist from record field list
+static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 {
+	Ty_ty temp;
 	if (record == NULL)
 	{
 		return NULL;
 	}
-	return Ty_TyList(S_look_ty(tenv, record->head->typ), makeFieldTyList(tenv, record->tail));
+	temp = S_look_ty(tenv, record->head->typ);
+	if (temp == NULL)
+	{
+		EM_error(record->head->pos, "Undefined type %s of field %s", record->head->typ, record->head->name);
+		temp = Ty_Int();
+	}
+	return Ty_TyList(temp, makeFieldTyList(tenv, record->tail));
 }
+
 // construct expty
 struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
@@ -73,18 +91,6 @@ struct expty expTy(Tr_exp exp, Ty_ty ty)
 	e.exp = exp;
 	e.ty = ty;
 	return e;
-}
-
-// 写完后发现没用了 transExpList
-struct expty transExpList(S_table venv, S_table tenv, A_expList list)
-{
-	if (list == NULL)
-	{
-		return expTy(NULL, NULL);
-	}
-	struct expty exp = transExp(venv, tenv, list->head);
-	struct expty inner = transExpList(venv, tenv, list->tail);
-	return expTy(NULL, Ty_TyList(exp.ty, inner.ty));
 }
 
 // return exp in Tr_exp with its type from A_exp
@@ -98,15 +104,15 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_nilExp:
 	{
-		return expTy(NULL, Ty_Nil());
+		return expTy(Tr_noExp(), Ty_Nil());
 	}
 	case A_intExp:
 	{
-		return expTy(NULL, Ty_Int());
+		return expTy(Tr_numExp(a->u.intt), Ty_Int());
 	}
 	case A_stringExp:
 	{
-		return expTy(NULL, Ty_String());
+		return expTy(Tr_stringExp(a->u.stringg), Ty_String());
 	}
 	case A_callExp:
 	{
@@ -116,34 +122,46 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		bool args_matched = TRUE;
 		// finding func
 		E_enventry binding = S_look(venv, a->u.call.func);
+		Tr_expList elist,tmplist;
+		elist = Tr_ExpList(NULL, NULL);
+		tmplist = elist;
 		if (binding&&binding->kind == E_funEntry)
 		{
 			// matching args
 			for (list = a->u.call.args, tylist = binding->u.fun.formals; list&&tylist; list = list->tail, tylist = tylist->tail)
 			{
 				exp = transExp(venv, tenv, list->head);
+				if (tmplist == elist)
+				{
+					tmplist->head = exp.exp;
+				}
+				else
+				{
+					tmplist->tail= Tr_ExpList(exp.exp, NULL);
+					tmplist = tmplist->tail;
+				}
 				if (!is_equal_ty(exp.ty, tylist->head))
 				{
 					args_matched = FALSE;
-					break;
 				}
 			}
 			// same #args and same types
 			if (args_matched&&tylist == NULL&&list == NULL)
 			{
 				// using actual return type
-				return expTy(NULL, actual_ty(binding->u.fun.result));
+				// TODO: call tr_exp, with label, level, but explist finished
+				return expTy(Tr_callExp(NULL,NULL,elist), actual_ty(binding->u.fun.result));
 			}
 			else
 			{
-				EM_error(a->pos, "Error args types in %s", S_name(a->u.call.func));
+				EM_error(a->pos, "Error args types or nums in %s", S_name(a->u.call.func));
 			}
 		}
 		else
 		{
 			EM_error(a->pos, "Error function name %s", S_name(a->u.call.func));
 		}
-		return expTy(NULL, Ty_Int());
+		return expTy(Tr_noExp(), Ty_Int());
 	}
 	case A_opExp:
 	{
@@ -196,6 +214,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	{
 		A_expList list = a->u.seq;
 		struct expty exp;
+
 		if (list)
 		{
 			for (; list != NULL; list = list->tail)
@@ -346,7 +365,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_arrayExp:
 	{
-		Ty_ty type = S_look_ty(tenv,a->u.array.typ);
+		Ty_ty type = S_look_ty(tenv, a->u.array.typ);
 		if (type&&type->kind == Ty_array)
 		{
 			struct expty size = transExp(venv, tenv, a->u.array.size);
@@ -483,8 +502,8 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		if (d->u.var.typ != NULL)
 		{
 			Ty_ty type = S_look(tenv, d->u.var.typ);
-			if(!is_equal_ty(type,e.ty))
-			//if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
+			if (!is_equal_ty(type, e.ty))
+				//if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
 			{
 				EM_error(d->pos, "Init not compatible");
 			}
@@ -592,5 +611,8 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 
 void SEM_transProg(A_exp exp)
 {
+	S_table venv = E_base_venv();
+	S_table tenv = E_base_tenv();
+	struct expty exp = transExp(venv, tenv, exp);
 	return;
 }
