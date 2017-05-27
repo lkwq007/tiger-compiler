@@ -88,6 +88,7 @@ Tr_exp Tr_noExp();
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level level);
 Tr_exp Tr_noExp();
 Tr_exp Tr_fieldVar(Tr_exp record, int index);
+Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index);
 
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals);
 F_fragList Tr_getResult(void);

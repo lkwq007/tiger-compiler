@@ -327,6 +327,9 @@ Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
 Tr_exp Tr_fieldVar(Tr_exp record, int index) {
     return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(record), T_Const(index * F_wordSize))));
 }
+Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index){
+    return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(array), T_Binop(T_mul, unEx(index),  T_Const(F_wordSize)))));    
+}
 Tr_exp Tr_noExp() {
     return Tr_Ex(Const(0));
 }
