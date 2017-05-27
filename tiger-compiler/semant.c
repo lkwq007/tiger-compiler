@@ -701,7 +701,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 }
 
 // the whole type checking and Tr_exp constructing phase
-void SEM_transProg(A_exp exp)
+F_fragList SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
