@@ -492,13 +492,13 @@ Ty_ty transTy(S_table tenv, A_ty a)
 
 void transDec(S_table venv, S_table tenv, A_dec d)
 {
-	// ��Ϊ d ���Ѿ�����������������������ʱ����
+	// assume that all member of d is complete, which is finished in parsing phase
 	switch (d->kind)
 	{
 	case A_varDec:
 	{
 		struct expty e = transExp(venv, tenv, d->u.var.init);
-		// ��ʼ�������ͼ���һ�û��̫�õ�˼·
+		// checking init and def types·
 		if (d->u.var.typ != NULL)
 		{
 			Ty_ty type = S_look(tenv, d->u.var.typ);
@@ -520,7 +520,7 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		}
 		break;
 	}
-	// �ݹ�����Ͷ��崦��
+	// deal with recursive type defining
 	case A_typeDec:
 	{
 		A_nametyList list = d->u.type;
@@ -555,7 +555,7 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		}
 		break;
 	}
-	// �ݹ麯���Լ��ຯ������
+	// handle recursive func and multi func
 	case A_functionDec:
 	{
 		A_fundecList list = d->u.function;
@@ -609,6 +609,7 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 	return;
 }
 
+// the whole type checking and Tr_exp constructing phase
 void SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
