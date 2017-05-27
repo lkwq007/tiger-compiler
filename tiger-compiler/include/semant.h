@@ -1,8 +1,8 @@
 #pragma once
 /* semant.h */
-struct expty transVar(S_table venv, S_table tenv, A_var v);
-struct expty transExp(S_table venv, S_table tenv, A_exp a);
-Tr_exp transDec(S_table venv, S_table tenv, A_dec d);
+struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_var v);
+struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_exp a);
+Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_dec d);
 Ty_ty transTy(S_table tenv, A_ty a);
 typedef void *Tr_exp;
 

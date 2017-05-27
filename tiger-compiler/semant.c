@@ -86,6 +86,16 @@ static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 	return Ty_TyList(temp, makeFieldTyList(tenv, record->tail));
 }
 
+// make escape list from params
+static U_boolList makeFormalList(A_fieldList params)
+{
+	if (params == NULL)
+	{
+		return NULL;
+	}
+	return U_BoolList(TRUE, makeFormalList(params->tail));
+}
+
 // construct expty
 static struct expty expTy(Tr_exp exp, Ty_ty ty)
 {
@@ -96,13 +106,13 @@ static struct expty expTy(Tr_exp exp, Ty_ty ty)
 }
 
 // return exp in Tr_exp with its type from A_exp
-struct expty transExp(S_table venv, S_table tenv, A_exp a)
+struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_exp a)
 {
 	switch (a->kind)
 	{
 	case A_varExp:
 	{
-		return transVar(venv, tenv, a->u.var);
+		return transVar(level, breakk, venv, tenv, a->u.var);
 	}
 	case A_nilExp:
 	{
@@ -125,7 +135,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		bool args_matched = TRUE;
 		// finding func
 		E_enventry binding = S_look(venv, a->u.call.func);
-		Tr_expList elist,tmplist;
+		Tr_expList elist, tmplist;
 		elist = Tr_ExpList(NULL, NULL);
 		tmplist = elist;
 		if (binding&&binding->kind == E_funEntry)
@@ -133,14 +143,14 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 			// matching args
 			for (list = a->u.call.args, tylist = binding->u.fun.formals; list&&tylist; list = list->tail, tylist = tylist->tail)
 			{
-				exp = transExp(venv, tenv, list->head);
+				exp = transExp(level, breakk, venv, tenv, list->head);
 				if (tmplist == elist)
 				{
 					tmplist->head = exp.exp;
 				}
 				else
 				{
-					tmplist->tail= Tr_ExpList(exp.exp, NULL);
+					tmplist->tail = Tr_ExpList(exp.exp, NULL);
 					tmplist = tmplist->tail;
 				}
 				if (!is_equal_ty(exp.ty, tylist->head))
@@ -153,7 +163,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 			{
 				// using actual return type
 				// TODO: call tr_exp, with label, level, but explist finished
-				return expTy(Tr_callExp(NULL,NULL,elist), actual_ty(binding->u.fun.result));
+				return expTy(Tr_callExp(binding->u.fun.level, binding->u.fun.label, elist), actual_ty(binding->u.fun.result));
 			}
 			else
 			{
@@ -169,8 +179,8 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	case A_opExp:
 	{
 		A_oper oper = a->u.op.oper;
-		struct expty left = transExp(venv, tenv, a->u.op.left);
-		struct expty right = transExp(venv, tenv, a->u.op.right);
+		struct expty left = transExp(level, breakk, venv, tenv, a->u.op.left);
+		struct expty right = transExp(level, breakk, venv, tenv, a->u.op.right);
 		switch (oper)
 		{
 		case A_plusOp:
@@ -186,7 +196,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 			{
 				EM_error(a->u.op.left->pos, "integer required");
 			}
-			return expTy(Tr_opExp(oper,left.exp,right.exp), Ty_Int());
+			return expTy(Tr_opExp(oper, left.exp, right.exp), Ty_Int());
 		}
 		case A_ltOp:
 		case A_leOp:
@@ -231,18 +241,18 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		{
 			return expTy(Tr_stringRelExp(oper, left.exp, right.exp), Ty_Int());
 		}
-		return expTy(Tr_relExp(oper,left.exp,right.exp), Ty_Int());
+		return expTy(Tr_relExp(oper, left.exp, right.exp), Ty_Int());
 	}
 	case A_seqExp:
 	{
 		A_expList list = a->u.seq;
 		struct expty exp;
-		Tr_expList trlist=Tr_ExpList(NULL,NULL),temp;
+		Tr_expList trlist = Tr_ExpList(NULL, NULL), temp;
 		if (list)
 		{
 			for (; list != NULL; list = list->tail)
 			{
-				exp = transExp(venv, tenv, list->head);
+				exp = transExp(level, breakk, venv, tenv, list->head);
 				if (trlist->head == NULL)
 				{
 					trlist->head = exp.exp;
@@ -253,9 +263,8 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 					temp->tail = Tr_ExpList(exp.exp, NULL);
 					temp = temp->tail;
 				}
-				// Tr_seq? may using recursive
 			}
-			return expTy(trlist,exp.ty);
+			return expTy(trlist, exp.ty);
 		}
 		else
 		{
@@ -265,11 +274,11 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	case A_assignExp:
 	{
 		// var.ty cannot be nil
-		struct expty var = transVar(venv, tenv, a->u.assign.var);
-		struct expty exp = transExp(venv, tenv, a->u.assign.exp);
+		struct expty var = transVar(level, breakk, venv, tenv, a->u.assign.var);
+		struct expty exp = transExp(level, breakk, venv, tenv, a->u.assign.exp);
 		if (is_equal_ty(var.ty, exp.ty))
 		{
-			return expTy(Tr_assignExp(var.exp,exp.exp), Ty_Void());
+			return expTy(Tr_assignExp(var.exp, exp.exp), Ty_Void());
 		}
 		else
 		{
@@ -279,18 +288,18 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	}
 	case A_ifExp:
 	{
-		struct expty test = transExp(venv, tenv, a->u.iff.test);
-		struct expty then = transExp(venv, tenv, a->u.iff.then);
+		struct expty test = transExp(level, breakk, venv, tenv, a->u.iff.test);
+		struct expty then = transExp(level, breakk, venv, tenv, a->u.iff.then);
 		if (test.ty->kind != Ty_int)
 		{
 			EM_error(a->pos, "Error if test");
 		}
 		if (a->u.iff.elsee)
 		{
-			struct expty elsee = transExp(venv, tenv, a->u.iff.elsee);
+			struct expty elsee = transExp(level, breakk, venv, tenv, a->u.iff.elsee);
 			if (is_equal_ty(then.ty, elsee.ty))
 			{
-				return expTy(Tr_ifExp(test.exp,then.exp,elsee.exp), actual_ty(then.ty));
+				return expTy(Tr_ifExp(test.exp, then.exp, elsee.exp), actual_ty(then.ty));
 			}
 			else
 			{
@@ -307,8 +316,8 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 	{
 		// TODO break checking
 		Temp_label end = Temp_newlabel();
-		struct expty test = transExp(venv, tenv, a->u.whilee.test);
-		struct expty body = transExp(venv, tenv, a->u.whilee.body);
+		struct expty test = transExp(level, breakk, venv, tenv, a->u.whilee.test);
+		struct expty body = transExp(level, end, venv, tenv, a->u.whilee.body);
 		if (test.ty->kind != Ty_int)
 		{
 			EM_error(a->pos, "Error while test");
@@ -325,47 +334,52 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		Temp_label end = Temp_newlabel();
 		// TODO allco for access
 		Tr_access access;
-		struct expty lo = transExp(venv, tenv, a->u.forr.lo);
-		struct expty hi = transExp(venv, tenv, a->u.forr.hi);
+		struct expty lo = transExp(level, breakk, venv, tenv, a->u.forr.lo);
+		struct expty hi = transExp(level, breakk, venv, tenv, a->u.forr.hi);
 		struct expty body;
 		if (lo.ty->kind != Ty_int || hi.ty->kind != Ty_int)
 		{
 			EM_error(a->pos, "range <lo hi> in for exp must be int");
 		}
 		S_beginScope(venv);
-		S_enter(venv, a->u.forr.var, E_VarEntry(Ty_Int()));
-		body = transExp(venv, tenv, a->u.forr.body);
+		S_enter(venv, a->u.forr.var, E_VarEntry(a->u.forr.escape, Ty_Int()));
+		access = Tr_allocLocal(level, a->u.forr.escape);
+		body = transExp(level, end, venv, tenv, a->u.forr.body);
 		S_endScope(venv);
 		if (body.ty->kind != Ty_void)
 		{
 			EM_error(a->pos, "the body of for exp must be void");
 		}
-		return expTy(Tr_forExp(access,end,lo.exp,hi.exp,body.exp), Ty_Void());
+		return expTy(Tr_forExp(access, end, lo.exp, hi.exp, body.exp), Ty_Void());
 	}
 	case A_breakExp:
 	{
 		// how to deal with break?
 		// we need extra args to record break
-		// TODO: ADD breakk args
-		return expTy(Tr_breakExp(end), Ty_Void());
+		if (breakk == NULL)
+		{
+			EM_error(a->pos, "break should be nested in while or for");
+			return expTy(Tr_noExp(), Ty_Void());
+		}
+		return expTy(Tr_breakExp(breakk), Ty_Void());
 	}
 	case A_letExp:
 	{
 		struct expty exp;
-		Tr_expList list=Tr_ExpList(Tr_noExp(),NULL),temp=list;
+		Tr_expList list = Tr_ExpList(Tr_noExp(), NULL), temp = list;
 		A_decList d;
 		S_beginScope(venv);
 		S_beginScope(tenv);
 		for (d = a->u.let.decs; d; d = d->tail)
 		{
-			temp->tail = Tr_ExpList(transDec(venv, tenv, d->head), NULL);
+			temp->tail = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
 			temp = temp->tail;
 		}
-		exp = transExp(venv, tenv, a->u.let.body);
+		exp = transExp(level, breakk, venv, tenv, a->u.let.body);
 		temp->tail = Tr_ExpList(exp.exp, NULL);
 		S_endScope(tenv);
 		S_endScope(venv);
-		return expTy(list,exp.ty);
+		return expTy(list, exp.ty);
 	}
 	case A_recordExp:
 	{
@@ -376,15 +390,15 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		{
 			if (list)
 			{
-				int size=0;
+				int size = 0;
 				Ty_fieldList tylist = type->u.record;
-				Tr_expList trlist = Tr_ExpList(Tr_noExp(), NULL),temp=NULL;
+				Tr_expList trlist = Tr_ExpList(Tr_noExp(), NULL), temp = NULL;
 				struct expty exp;
 				for (; list&&tylist; list = list->tail, tylist = tylist->tail)
 				{
 					if (list->head->name == tylist->head->name)
 					{
-						exp = transExp(venv, tenv, list->head->exp);
+						exp = transExp(level, breakk, venv, tenv, list->head->exp);
 						if (!is_equal_ty(tylist->head->ty, exp.ty))
 						{
 							field_matched = FALSE;
@@ -404,7 +418,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 				}
 				if (field_matched&&tylist == NULL&&list == NULL)
 				{
-					return expTy(Tr_recordExp(trlist,size), type);
+					return expTy(Tr_recordExp(trlist, size), type);
 				}
 				else
 				{
@@ -423,15 +437,15 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 		Ty_ty type = S_look_ty(tenv, a->u.array.typ);
 		if (type&&type->kind == Ty_array)
 		{
-			struct expty size = transExp(venv, tenv, a->u.array.size);
-			struct expty init = transExp(venv, tenv, a->u.array.init);
+			struct expty size = transExp(level, breakk, venv, tenv, a->u.array.size);
+			struct expty init = transExp(level, breakk, venv, tenv, a->u.array.init);
 			if (size.ty->kind != Ty_int)
 			{
 				EM_error(a->u.array.size->pos, "size of array should be int");
 			}
 			if (is_equal_ty(type->u.array, init.ty))
 			{
-				return expTy(Tr_arrayExp(size.exp,init.exp), type);
+				return expTy(Tr_arrayExp(size.exp, init.exp), type);
 			}
 			EM_error(a->pos, "Array init type not matched");
 		}
@@ -446,7 +460,7 @@ struct expty transExp(S_table venv, S_table tenv, A_exp a)
 }
 
 // return var in Tr_exp with its type from A_var
-struct expty transVar(S_table venv, S_table tenv, A_var v)
+struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_var v)
 {
 	switch (v->kind)
 	{
@@ -454,7 +468,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		E_enventry x = S_look(venv, v->u.simple);
 		if (x&&x->kind == E_varEntry)
 		{
-			return expTy(Tr_simpleVar(x->u.var.access,level), actual_ty(x->u.var.ty));
+			return expTy(Tr_simpleVar(x->u.var.access, level), actual_ty(x->u.var.ty));
 		}
 		else
 		{
@@ -466,7 +480,7 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 	case A_fieldVar: {
 		bool is_exist = FALSE;
 		int index = 0;
-		struct expty field = transVar(venv, tenv, v->u.field.var);
+		struct expty field = transVar(level, breakk, venv, tenv, v->u.field.var);
 		if (field.ty->kind != Ty_record)
 		{
 			EM_error(v->u.field.var->pos, "variable with field but not a record");
@@ -490,8 +504,8 @@ struct expty transVar(S_table venv, S_table tenv, A_var v)
 		break;
 	}
 	case A_subscriptVar: {
-		struct expty ptr = transVar(venv, tenv, v->u.subscript.var);
-		struct expty exp = transExp(venv, tenv, v->u.subscript.exp);
+		struct expty ptr = transVar(level, breakk, venv, tenv, v->u.subscript.var);
+		struct expty exp = transExp(level, breakk, venv, tenv, v->u.subscript.exp);
 		if (ptr.ty->kind != Ty_array)
 		{
 			EM_error(v->pos, "variable with subscript is not an array");
@@ -550,7 +564,7 @@ Ty_ty transTy(S_table tenv, A_ty a)
 	assert(0);
 }
 
-Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
+Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A_dec d)
 {
 	// assume that all member of d is complete, which is finished in parsing phase
 	switch (d->kind)
@@ -559,7 +573,7 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
 	{
 		// TODO update level args
 		Tr_access access = Tr_allocLocal(level, d->u.var.escape);
-		struct expty e = transExp(venv, tenv, d->u.var.init);
+		struct expty e = transExp(level, breakk, venv, tenv, d->u.var.init);
 		// checking init and def types·
 		if (d->u.var.typ != NULL)
 		{
@@ -592,14 +606,14 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
 			type = Ty_Name(list->head->name, NULL);
 			S_enter(tenv, list->head->name, type);
 		}
-		
+
 		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look_ty(tenv, list->head->name);
 			type->u.name.ty = transTy(tenv, list->head->ty);
 		}
 		// checking looping recursive
-		
+
 		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look_ty(tenv, list->head->name);
@@ -620,12 +634,15 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
 	// handle recursive func and multi func
 	case A_functionDec:
 	{
-		// TODO make formals
+		// TODO more accurate access type
 		A_fundecList list = d->u.function;
-		Tr_level flevel = Tr_newLevel(level, Temp_newlabel(), formals);
+		Tr_accessList aclist = Tr_AccessList(NULL, NULL), tmplist = NULL;
 		for (; list; list = list->tail)
 		{
 			A_fundec f = d->u.function->head;
+			U_boolList formals = makeFormalList(f->params);
+			Temp_label flabel = Temp_newlabel();
+			Tr_level flevel = Tr_newLevel(level, flabel, formals);
 			Ty_ty resultTy = S_look(tenv, f->result);
 			if (resultTy == NULL)
 			{
@@ -634,7 +651,7 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
 			}
 			// undefined formal types?
 			Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
-			S_enter(venv, f->name, E_FunEntry(formalTys, resultTy));
+			S_enter(venv, f->name, E_FunEntry(flevel, flabel, formalTys, resultTy));
 		}
 		for (list = d->u.function; list; list = list->tail)
 		{
@@ -649,18 +666,20 @@ Tr_exp transDec(S_table venv, S_table tenv, A_dec d)
 				Ty_tyList t;
 				for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail)
 				{
+					// TODO change escape
+					Tr_access access = Tr_allocLocal(func->u.fun.level, TRUE);
 					if (t->head == NULL)
 					{
-						S_enter(venv, l->head->name, E_VarEntry(t->head));
+						S_enter(venv, l->head->name, E_VarEntry(access, t->head));
 						EM_error(f->pos, "Undefined formal type %s in %s", l->head->name, f->name);
 					}
 					else
 					{
-						S_enter(venv, l->head->name, E_VarEntry(t->head));
+						S_enter(venv, l->head->name, E_VarEntry(access, t->head));
 					}
 				}
 			}
-			body = transExp(venv, tenv, f->body);
+			body = transExp(func->u.fun.level, breakk, venv, tenv, f->body);
 			if (!is_equal_ty(resultTy, body.ty))
 			{
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
@@ -678,6 +697,6 @@ void SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
-	struct expty exp = transExp(venv, tenv, exp);
+	struct expty exp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
 	return;
 }
