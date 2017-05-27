@@ -643,7 +643,6 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 	{
 		// TODO more accurate access type
 		A_fundecList list = d->u.function;
-		Tr_accessList aclist = Tr_AccessList(NULL, NULL), tmplist = NULL;
 		for (; list; list = list->tail)
 		{
 			A_fundec f = d->u.function->head;
@@ -666,27 +665,29 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			E_enventry func = S_look(venv, f->name);
 			Ty_ty resultTy = func->u.fun.result;
 			Ty_tyList formalTys = func->u.fun.formals;
+			Tr_accessList acclist=Tr_formals(func->u.fun.level);
 			struct expty body;
 			S_beginScope(venv);
 			{
 				A_fieldList l;
 				Ty_tyList t;
-				for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail)
+				for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail, acclist=acclist->tail)
 				{
-					// TODO change escape
-					Tr_access access = Tr_allocLocal(func->u.fun.level, TRUE);
 					if (t->head == NULL)
 					{
-						S_enter(venv, l->head->name, E_VarEntry(access, t->head));
+						S_enter(venv, l->head->name, E_VarEntry(acclist->head, t->head));
 						EM_error(f->pos, "Undefined formal type %s in %s", l->head->name, f->name);
 					}
 					else
 					{
-						S_enter(venv, l->head->name, E_VarEntry(access, t->head));
+						S_enter(venv, l->head->name, E_VarEntry(acclist->head, t->head));
 					}
 				}
 			}
+			acclist = Tr_formals(func->u.fun.level);
 			body = transExp(func->u.fun.level, breakk, venv, tenv, f->body);
+			// TODO acclist
+			Tr_procEntryExit(func->u.fun.level, body.exp, acclist);
 			if (!is_equal_ty(resultTy, body.ty))
 			{
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
@@ -704,6 +705,6 @@ void SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
-	struct expty exp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
-	return;
+	transExp(Tr_outermost(), NULL, venv, tenv, exp);
+	return Tr_getResult();
 }
