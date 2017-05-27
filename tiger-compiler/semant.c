@@ -492,13 +492,13 @@ Ty_ty transTy(S_table tenv, A_ty a)
 
 void transDec(S_table venv, S_table tenv, A_dec d)
 {
-	// ÈÏÎª d ÊÇÒÑ¾­±»ÍêÕû¹¹½¨µÄÉùÃ÷£¬½âÎöÊ±¹¹½¨
+	// ï¿½ï¿½Îª d ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½
 	switch (d->kind)
 	{
 	case A_varDec:
 	{
 		struct expty e = transExp(venv, tenv, d->u.var.init);
-		// ³õÊ¼»¯µÄÀàĞÍ¼ì²éÎÒ»¹Ã»ÓĞÌ«ºÃµÄË¼Â·
+		// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ò»ï¿½Ã»ï¿½ï¿½Ì«ï¿½Ãµï¿½Ë¼Â·
 		if (d->u.var.typ != NULL)
 		{
 			Ty_ty type = S_look(tenv, d->u.var.typ);
@@ -520,7 +520,7 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		}
 		break;
 	}
-	// µİ¹éµÄÀàĞÍ¶¨Òå´¦Àí
+	// ï¿½İ¹ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½ï¿½å´¦ï¿½ï¿½
 	case A_typeDec:
 	{
 		A_nametyList list = d->u.type;
@@ -530,15 +530,15 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 			type = Ty_Name(list->head->name, NULL);
 			S_enter(tenv, list->head->name, type);
 		}
-		list = d->u.type;
-		for (; list; list = list->tail)
+		
+		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look_ty(tenv, list->head->name);
 			type->u.name.ty = transTy(tenv, list->head->ty);
 		}
 		// checking looping recursive
-		list = d->u.type;
-		for (; list; list = list->tail)
+		
+		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look_ty(tenv, list->head->name);
 			temp = type;
@@ -555,11 +555,11 @@ void transDec(S_table venv, S_table tenv, A_dec d)
 		}
 		break;
 	}
-	// µİ¹éº¯ÊıÒÔ¼°¶àº¯Êı´¦Àí
+	// ï¿½İ¹éº¯ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½àº¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	case A_functionDec:
 	{
 		A_fundecList list = d->u.function;
-		for (list; list; list = list->tail)
+		for (; list; list = list->tail)
 		{
 			A_fundec f = d->u.function->head;
 			Ty_ty resultTy = S_look(tenv, f->result);

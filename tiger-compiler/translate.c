@@ -286,17 +286,35 @@ Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
         return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
     }
 }
+Tr_exp Tr_breakExp(Tr_exp end){
+    T_stm s = unNx(end);
+    if(s&&s->kind==T_LABEL){
+        return Tr_Nx(T_Jump(T_Name(s->LABEL), Temp_LabelList(s->LABEL, NULL)));
+    }
+    assert(0);
+}
+
 // move the condition check to latter part to avoid bugs out of overflowing
-Tr_exp Tr_whileExp(Tr_exp cond, Tr_exp body){
-    Temp_label start = Temp_newlabel(), end = Temp_newlabel(), test = Temp_newlabel();
+Tr_exp Tr_whileExp(Tr_exp cond, Temp_label end, Tr_exp body){
+    Temp_label start = Temp_newlabel(), test = Temp_newlabel();
     T_exp cond_ex = unEx(cond);
     T_stm body_nx = unNx(body);
     return Tr_Ex(T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0))))))));
 }
 Tr_exp Tr_forExp(Tr_access access,
+                 Temp_label end,
                  Tr_exp low,
                  Tr_exp high,
                  Tr_exp body){
+    Temp_label start = Temp_newlabel(), test = Temp_newlabel();
+    T_exp index = F_exp(access->access) // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
+    T_exp high_exp = unEx(high);
+    T_stm body_nx = unNx(body);    
+    T_stm cond = T_Cjump(T_le, index, high_exp, loop, done);
+    T_stm mv = T_Move(index, low);
+    T_stm incre = T_Move(index, T_Binop(A_plusOp, index, T_Const(1)));
+    body_nx = T_Seq(body_nx, incre);
+    return Tr_Ex(T_Eseq(mv, T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0)))))))));
 
                  }
 Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs) {
