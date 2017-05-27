@@ -1,6 +1,8 @@
 /* env.c */
 #include "env.h"
-#include "allheader.h"
+#include "symbol.h"
+#include "translate.h"
+#include "types.h"
 
 E_enventry E_VarEntry(Tr_access access, Ty_ty ty)
 {

@@ -1,5 +1,8 @@
 #include "escape.h"
-#include "allheader.h"
+#include "symbol.h"
+#include "absyn.h"
+#include "env.h"
+#include "util.h"
 /* escape.c */
 
 // escapeEntry binding in escape table
@@ -161,7 +164,7 @@ static void traverseDec(S_table env, int depth, A_dec d)
 					S_enter(env, l->head->name, EscapeEntry(depth + 1, &(l->head->escape)));
 				}
 			}
-			transExp(env, depth + 1, f->body);
+			traverseExp(env, depth + 1, f->body);
 			S_endScope(env);
 		}
 		break;

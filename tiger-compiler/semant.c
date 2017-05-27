@@ -1,7 +1,14 @@
 /* semant.c */
 #include "semant.h"
 #include "translate.h"
-#include "allheader.h"
+#include "env.h"
+#include "types.h"
+#include "symbol.h"
+#include "absyn.h"
+#include "errormsg.h"
+#include "util.h"
+#include <assert.h>
+#include <stdlib.h>
 
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
 static bool is_equal_ty(Ty_ty type, Ty_ty exp)
