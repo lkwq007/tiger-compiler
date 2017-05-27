@@ -5,51 +5,6 @@
 #include "tree.h"
 #include "absyn.h"
 
-
-struct Tr_access_
-{
-    Tr_level level;
-    F_access access;
-};
-
-struct Tr_level_
-{
-    Tr_level parent;
-    Temp_label name;
-    F_frame frame;
-    Tr_accessList formals;
-};
-
-struct patchList_ {
-    Temp_label *head;
-    patchList tail;
-};
-
-struct Tr_accessList_ {
-    Tr_access head;
-    Tr_accessList tail;
-};
-
-typedef struct Cx {
-    patchList trues;
-    patchList falses;
-    T_stm stm;
-} *Cx;
-
-struct Tr_exp_ {
-    enum {Tr_ex, Tr_nx, Tr_cx} kind;
-    union {
-        T_exp ex;
-        T_stm nx;
-        Cx cx;
-    } u;
-};
-
-struct Tr_expList_ {
-    Tr_exp head;
-    Tr_expList tail;
-};
-
 static Tr_level outer = NULL;
 F_fragList stringList = NULL;
 
@@ -65,7 +20,6 @@ Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail) {
     list->tail = tail;
     return list;
 }
-
 
 static Tr_exp Tr_Ex(T_exp ex) {
     Tr_exp res = checked_malloc(sizeof(*res));
@@ -378,6 +332,14 @@ Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index){
 }
 Tr_exp Tr_noExp() {
     return Tr_Ex(Const(0));
+}
+
+Tr_expList Tr_ExpList(Tr_exp head, Tr_expList tail)
+{
+	Tr_expList list = (Tr_expList)checked_malloc(sizeof(*list));
+	list->head = head;
+	list->tail = tail;
+	return list;
 }
 
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals)
