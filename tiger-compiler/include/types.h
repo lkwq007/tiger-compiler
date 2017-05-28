@@ -1,3 +1,6 @@
+#pragma once
+// #include "temp.h"
+#include "symbol.h"
 /*
  * types.h -
  *

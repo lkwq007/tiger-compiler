@@ -1,4 +1,7 @@
 #pragma once
+#include "translate.h"
+#include "semant.h"
+#include "temp.h"
 /* env.h */
 typedef struct E_enventry_ *E_enventry;
 struct E_enventry_

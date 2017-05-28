@@ -7,7 +7,11 @@
 
 static Tr_level outer = NULL;
 F_fragList stringList = NULL;
+F_fragList fragList = NULL;
 
+T_exp Tr_expListConversion(Tr_expList stmts);
+Tr_accessList makeFormalTrAccessList(Tr_level level, F_frame frame);
+static void doPatch(patchList pList, Temp_label label);
 Tr_access Tr_Access(Tr_level level, F_access access) {
     Tr_access list = checked_malloc(sizeof(*list));
     list->level = level;
@@ -266,7 +270,7 @@ T_exp Tr_expListConversion(Tr_expList stmts) {
     if(!stmts)
         return NULL; //whether return NULL affects tree conversion? suppose not
     else
-        return T_Eseq(T_Exp(unEx(stmts->head)), Tr_seqExp(stmts->tail));
+        return T_Eseq(T_Exp(unEx(stmts->head)), Tr_expListConversion(stmts->tail));
 }
 // ifExp is hard to write
 Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
@@ -307,10 +311,10 @@ Tr_exp Tr_forExp(Tr_access access,
                  Tr_exp high,
                  Tr_exp body){
     Temp_label start = Temp_newlabel(), test = Temp_newlabel();
-	T_exp index = F_exp(access->access); // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
+	T_exp index = F_exp(access->access, T_Temp(F_FP())); // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
     T_exp high_exp = unEx(high);
     T_stm body_nx = unNx(body);    
-    T_stm cond = T_Cjump(T_le, index, high_exp, loop, done);
+    T_stm cond = T_Cjump(T_le, index, high_exp, start, end);
     T_stm mv = T_Move(index, low);
     T_stm incre = T_Move(index, T_Binop(A_plusOp, index, T_Const(1)));
     body_nx = T_Seq(body_nx, incre);

@@ -4,20 +4,8 @@
 #include "util.h"
 
 
-struct F_access_ {
-    enum { inFrame, inReg } kind;
-    union {
-        int offset; /* inFrame */
-        Temp_temp reg; /* inReg */
-    } u;
-};
-struct F_frame_ {
-    Temp_label name;
-    F_accessList formals;
-    int local_count;
-};
+F_access InReg(Temp_temp reg);
 
-extern const int F_wordSize = 8;
 
 static F_access F_Access(Temp_temp reg) {
     F_access res = checked_malloc(sizeof(*res));
@@ -70,7 +58,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 }
 
 T_exp F_exp(F_access acc, T_exp framePtr) {
-    return T_Temp(access->u.reg);
+    return T_Temp(acc->u.reg);
 }
 
 
@@ -103,7 +91,7 @@ F_frag F_ProcFrag(T_stm body, F_frame frame) {
 }
 
 F_fragList F_FragList(F_frag head, F_fragList tail) {
-    F_fragList res = checked_malloc(sizeof(*fl));
+    F_fragList res = checked_malloc(sizeof(*res));
     res->head = head;
     res->tail = tail;
     return res;
@@ -118,3 +106,9 @@ T_exp F_externalCall(string str, T_expList args) {
     return T_Call(T_Name(Temp_namedlabel(str)), args);
 }
 
+static Temp_temp fp = NULL;
+Temp_temp F_FP(void){
+    if(!fp)
+        fp = Temp_newtemp();;
+    return fp;
+}

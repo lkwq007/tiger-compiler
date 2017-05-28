@@ -9,7 +9,7 @@ int charPos=1;
 static int commentDepth = 0;
 const int initSize = 10;
 static int curSize = 0;
-static curCap = initSize;
+static int curCap = initSize;
 char *str = NULL;
 
 int yywrap(void)
@@ -30,7 +30,7 @@ void appendStr(string s){
     if(curSize+length>curCap){
         curCap*=2;
         curCap+=length;
-        tempStr = checked_malloc(curCap*sizeof(char));
+        char* tempStr = (char*)checked_malloc(curCap*sizeof(char));
         strcpy(tempStr, str);
         str = tempStr;
     }

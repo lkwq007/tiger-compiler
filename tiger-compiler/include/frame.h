@@ -9,6 +9,19 @@ typedef struct F_frame_ *F_frame;
 typedef struct F_access_*F_access;
 typedef struct F_accessList_ *F_accessList;
 
+struct F_access_ {
+    enum { inFrame, inReg } kind;
+    union {
+        int offset; /* inFrame */
+        Temp_temp reg; /* inReg */
+    } u;
+};
+struct F_frame_ {
+    Temp_label name;
+    F_accessList formals;
+    int local_count;
+};
+
 struct F_accessList_
 {
 	F_access head;
@@ -48,7 +61,8 @@ F_accessList F_formals(F_frame f);
 F_access F_allocLocal(F_frame f, bool escape);
 T_exp F_exp(F_access acc, T_exp framePtr);
 T_exp F_externalCall(string str, T_expList args);
+Temp_temp F_FP(void);
 
 Temp_map F_tempMap;
 
-int F_wordSize = 4;
+extern const int F_wordSize = 8;

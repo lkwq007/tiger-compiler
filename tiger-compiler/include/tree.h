@@ -1,3 +1,4 @@
+#pragma once
 /*
  * tree.h - Definitions for intermediate representation (IR) trees.
  *

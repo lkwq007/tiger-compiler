@@ -34,6 +34,12 @@ struct Tr_accessList_ {
 	Tr_accessList tail;
 };
 
+typedef struct cx {
+	patchList trues;
+	patchList falses;
+	T_stm stm;
+} *Cx;
+
 struct Tr_exp_ {
 	enum { Tr_ex, Tr_nx, Tr_cx } kind;
 	union {
@@ -48,11 +54,7 @@ struct Tr_expList_ {
 	Tr_expList tail;
 };
 
-typedef struct Cx {
-	patchList trues;
-	patchList falses;
-	T_stm stm;
-} *Cx;
+
 
 // Tr_exp Tr_simpleVar(Tr_access, );
 Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail);
