@@ -9,6 +9,7 @@
 #include "util.h"
 #include <assert.h>
 #include <stdlib.h>
+#include "printtree.h"
 
 static Ty_ty actual_ty(Ty_ty dummy);
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
@@ -168,7 +169,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		// finding func
 		E_enventry binding = S_look(venv, a->u.call.func);
 		Tr_expList elist, tmplist;
-		elist = Tr_ExpList(NULL, NULL);
+		elist = NULL;
 		tmplist = elist;
 		if (binding&&binding->kind == E_funEntry)
 		{
@@ -178,7 +179,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 				exp = transExp(level, breakk, venv, tenv, list->head);
 				if (tmplist == elist)
 				{
-					tmplist->head = exp.exp;
+					tmplist=Tr_ExpList(exp.exp, NULL)
 				}
 				else
 				{
