@@ -165,6 +165,10 @@ Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
 Tr_accessList makeFormalTrAccessList(Tr_level level, F_frame frame) {
 	Tr_accessList head = NULL, tail = NULL;
 	// F_accessList f_list = frame->formals->tail;
+	if (!frame->formals)
+	{
+		return NULL;
+	}
 	for (F_accessList f_list = frame->formals->tail; f_list; f_list = f_list->tail)
 		head = Tr_AccessList(Tr_Access(level, f_list->head), head);
 	return head;

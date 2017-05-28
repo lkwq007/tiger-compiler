@@ -71,7 +71,7 @@ static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(params->head->pos, "Undefined type %s of formal %s", params->head->typ, params->head->name);
+		EM_error(params->head->pos, "Undefined type %s of formal %s", S_name(params->head->typ), S_name(params->head->name));
 		temp = Ty_Int();
 	}
 	return Ty_TyList(temp, makeFormalTyList(tenv, params->tail));
@@ -85,11 +85,11 @@ static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 	{
 		return NULL;
 	}
-	temp = S_look_ty(tenv, record->head->typ);
+	temp = S_look(tenv, record->head->typ);
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(record->head->pos, "Undefined type %s of field %s", record->head->typ, record->head->name);
+		EM_error(record->head->pos, "Undefined type %s of field %s", S_name(record->head->typ), S_name(record->head->name));
 		temp = Ty_Int();
 	}
 	return Ty_TyList(temp, makeFieldTyList(tenv, record->tail));
@@ -104,11 +104,11 @@ static Ty_fieldList makeFieldList(S_table tenv, A_fieldList record)
 	{
 		return NULL;
 	}
-	temp = S_look_ty(tenv, record->head->typ);
+	temp = S_look(tenv, record->head->typ);
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(record->head->pos, "Undefined type %s of field %s", record->head->typ, record->head->name);
+		EM_error(record->head->pos, "Undefined type %s of field %s", S_name(record->head->typ), S_name(record->head->name));
 		temp = Ty_Int();
 		name = S_Symbol("error");
 	}
@@ -179,7 +179,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 				exp = transExp(level, breakk, venv, tenv, list->head);
 				if (tmplist == elist)
 				{
-					tmplist=Tr_ExpList(exp.exp, NULL)
+					tmplist = Tr_ExpList(exp.exp, NULL);
 				}
 				else
 				{
@@ -673,11 +673,15 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 		A_fundecList list = d->u.function;
 		for (; list; list = list->tail)
 		{
-			A_fundec f = d->u.function->head;
+			A_fundec f = list->head;
 			U_boolList formals = makeFormalList(f->params);
 			Temp_label flabel = Temp_newlabel();
 			Tr_level flevel = Tr_newLevel(level, flabel, formals);
-			Ty_ty resultTy = S_look(tenv, f->result);
+			Ty_ty resultTy = Ty_Void();
+			if (f->result)
+			{
+				resultTy = S_look(tenv, f->result);
+			}
 			if (resultTy == NULL)
 			{
 				EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
@@ -689,7 +693,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 		}
 		for (list = d->u.function; list; list = list->tail)
 		{
-			A_fundec f = d->u.function->head;
+			A_fundec f = list->head;
 			E_enventry func = S_look(venv, f->name);
 			Ty_ty resultTy = func->u.fun.result;
 			Ty_tyList formalTys = func->u.fun.formals;
@@ -734,6 +738,6 @@ F_fragList SEM_transProg(A_exp exp)
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
 	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
-	// printStmList(stdout, T_StmList(T_Exp(temp.exp->u.ex), NULL));
+	printStmList(stdout, T_StmList(T_Exp(temp.exp->u.ex), NULL));
 	return Tr_getResult();
 }

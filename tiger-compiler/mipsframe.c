@@ -136,8 +136,8 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 	{
 		if (formals->head)
 		{
-			f->local_count++;
 			access = InFrame(-f->local_count*F_wordSize);
+			f->local_count++;
 		}
 		else
 		{
@@ -150,8 +150,9 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 		}
 		else
 		{
+			f->formals =F_AccessList(access, NULL);
 			tmp = f->formals;
-			tmp=F_AccessList(access, NULL);
+
 		}
 	}
 	return f;
