@@ -6,39 +6,37 @@
 #include "errormsg.h"
 
 int charPos=1;
-int commentDepth=0;
 
-/* String handling variables/functions */
-#define BUFSIZE 8192
-char strbuf[BUFSIZE+1];
-char *strptr = NULL;
-unsigned int strlength = 0;
-
-void setup(void)
-{
-	*strbuf = '\0';
-	strlength = 0;
-}
-
-char *teardown()
-{
-	char *s = checked_malloc(strlen(strbuf)+1);
-	strcpy(s, strbuf);
-	return s;
-}
-
-void appendstr(char *str)
-{
-	if ((strlength + strlen(str)) < BUFSIZE) {
-		strcat(strbuf, str);
-		strlength += strlen(str);
-	}
-}
+static int commentDepth = 0;
+const int initSize = 10;
+static int curSize = 0;
+static curCap = initSize;
+char *str = NULL;
 
 int yywrap(void)
 {
  charPos=1;
  return 1;
+}
+
+void strInit(){
+    curCap = initSize;
+    curSize = 0;
+    str = checked_malloc(initSize*sizeof(char));
+    str[0] = '\0';
+}
+
+void appendStr(string s){
+    int length = strlen(s);
+    if(curSize+length>curCap){
+        curCap*=2;
+        curCap+=length;
+        string tempStr = checked_malloc(curCap*sizeof(char));
+        strcpy(tempStr, str);
+        str = tempStr;
+    }
+    strcat(str, s);
+    curSize+=length;
 }
 
 
@@ -103,19 +101,19 @@ void adjust(void)
 "|"	  {adjust(); return OR;}
 [0-9]+	 {adjust(); yylval.ival=atoi(yytext); return INT;}
 
-\" {adjust(); BEGIN(STR); setup();}
+\" {adjust(); BEGIN(STR); strInit();}
 <STR>{
-	\" 			{adjust(); yylval.sval=teardown(); BEGIN(INITIAL); return STRING;}
-	\\n			{adjust(); appendstr("\n");}
-	\\t			{adjust(); appendstr("\t");}
-	\\[0-9]{3}	{adjust(); appendstr(yytext);}
-	\\^[GHIJLM]	{adjust(); appendstr(yytext);}
-	\\\\		{adjust(); appendstr(yytext);}
-	\\\"		{adjust(); appendstr(yytext);}
+	\" 			{adjust(); yylval.sval=str; BEGIN(INITIAL); return STRING;}
+	\\n			{adjust(); appendStr("\n");}
+	\\t			{adjust(); appendStr("\t");}
+	\\[0-9]{3}	{adjust(); appendStr(yytext);}
+	\\^[GHIJLM]	{adjust(); appendStr(yytext);}
+	\\\\		{adjust(); appendStr(yytext);}
+	\\\"		{adjust(); appendStr(yytext);}
 	\\[ \n\t\r\f]+\\ {adjust();}
 	\\(.|\n)	{adjust(); EM_error(EM_tokPos, "illegal token");}
 	\n			{adjust(); EM_error(EM_tokPos, "illegal token");}
-	[^\"\\\n]+ 	{adjust(); appendstr(yytext);}
+	[^\"\\\n]+ 	{adjust(); appendStr(yytext);}
 }
 .	 {adjust(); EM_error(EM_tokPos,"illegal token");}
 %%

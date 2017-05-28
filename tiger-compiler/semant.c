@@ -687,6 +687,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
 				resultTy = Ty_Void();
 			}
+			if (!resultTy) resultTy = Ty_Void();
 			// undefined formal types?
 			Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
 			S_enter(venv, f->name, E_FunEntry(flevel, flabel, formalTys, resultTy));

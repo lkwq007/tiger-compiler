@@ -53,6 +53,7 @@ void TAB_enter(TAB_table t, void *key, void *value)
 void *TAB_look(TAB_table t, void *key)
 {int index;
  binder b;
+//  if(!key) return NULL;
  assert(t && key);
  index=((unsigned)key) % TABSIZE;
  for(b=t->table[index]; b; b=b->next)

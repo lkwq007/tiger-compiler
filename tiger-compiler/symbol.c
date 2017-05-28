@@ -38,6 +38,7 @@ S_symbol S_Symbol(string name)
  
 string S_name(S_symbol sym)
 {
+  // if(!sym) return (string)"void";
  return sym->name;
 }
 
