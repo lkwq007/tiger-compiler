@@ -194,12 +194,18 @@ Tr_exp Tr_stringExp(string str) {
 
 T_expList translateToTreeExpList(Tr_expList argList) {
 	T_expList res = NULL;
-	while (argList) {
-		Tr_exp temp = argList->head;
-		res = T_expListAppend(res, unEx(temp));
-		argList = argList->tail;
+	T_expList tailList = NULL;
+	Tr_exp iter = argList->head;
+	for (; iter ; iter = argList->tail) {
+		if (res) {
+			tailList->tail = T_ExpList(unEx(iter), NULL);
+			tailList = tailList->tail;
+		} else {
+			res = T_ExpList(unEx(iter), NULL);
+			tailList = res;
+		}
 	}
-	return res;
+	return eList;
 }
 
 Tr_exp Tr_callExp(Tr_level level, Temp_label label, Tr_expList argList) {

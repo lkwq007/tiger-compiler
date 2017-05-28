@@ -676,12 +676,16 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			U_boolList formals = makeFormalList(f->params);
 			Temp_label flabel = Temp_newlabel();
 			Tr_level flevel = Tr_newLevel(level, flabel, formals);
-			Ty_ty resultTy = S_look(tenv, f->result);
-			if (resultTy == NULL)
-			{
-				EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
-				resultTy = Ty_Void();
+			Ty_ty resultTy = NULL;
+			if (list->head->result) {
+				resultTy = S_look(tenv, f->result);
+				if (resultTy == NULL)
+				{
+					EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
+					resultTy = Ty_Void();
+				}
 			}
+			if (!resultTy) resultTy = Ty_Void();
 			// undefined formal types?
 			Ty_tyList formalTys = makeFormalTyList(tenv, f->params);
 			S_enter(venv, f->name, E_FunEntry(flevel, flabel, formalTys, resultTy));
