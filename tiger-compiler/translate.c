@@ -56,10 +56,10 @@ static T_exp unEx(Tr_exp e)
     case Tr_cx: {
         Temp_temp r = Temp_newtemp();
         Temp_label t = Temp_newlabel(), f = Temp_newlabel();
-        doPatch(e->u.cx.trues, t);
-        doPatch(e->u.cx.falses, f);
+		doPatch(e->u.cx->trues, t);
+        doPatch(e->u.cx->falses, f);
         return T_Eseq(T_Move(T_Temp(r), T_Const(1)),
-                      T_Eseq(e->u.cx.stm,
+                      T_Eseq(e->u.cx->stm,
                              T_Eseq(T_Label(f),
                                     T_Eseq(T_Move(T_Temp(r), T_Const(0)),
                                            T_Eseq(T_Label(t), T_Temp(r))))));
@@ -81,10 +81,10 @@ static T_stm unNx(Tr_exp e)
     case Tr_cx: {
         Temp_temp r = Temp_newtemp();
         Temp_label t = Temp_newlabel(), f = Temp_newlabel();
-        doPatch(e->u.cx.trues, t);
-        doPatch(e->u.cx.falses, f);
+        doPatch(e->u.cx->trues, t);
+        doPatch(e->u.cx->falses, f);
         return T_Exp(T_Eseq(T_Move(T_Temp(r), T_Const(1)),
-                            T_Eseq(e->u.cx.stm,
+                            T_Eseq(e->u.cx->stm,
                                    T_Eseq(T_Label(f),
                                           T_Eseq(T_Move(T_Temp(r), T_Const(0)),
                                                   T_Eseq(T_Label(t), T_Temp(r)))))));
@@ -152,7 +152,7 @@ Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
 Tr_accessList makeFormalTrAccessList(Tr_level level, F_frame frame) {
     Tr_accessList head=NULL, tail=NULL;
     // F_accessList f_list = frame->formals->tail;
-    for(F_accessList f_list = frame->formals->tail; f_list; f_list = f_list->tail)
+	for(F_accessList f_list = frame->formals->tail; f_list; f_list = f_list->tail)
         head = Tr_AccessList(Tr_Access(level, f_list->head), head);
     return head;
 }
@@ -289,7 +289,7 @@ Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
 Tr_exp Tr_breakExp(Tr_exp end){
     T_stm s = unNx(end);
     if(s&&s->kind==T_LABEL){
-        return Tr_Nx(T_Jump(T_Name(s->LABEL), Temp_LabelList(s->LABEL, NULL)));
+        return Tr_Nx(T_Jump(T_Name(s->u.LABEL), Temp_LabelList(s->u.LABEL, NULL)));
     }
     assert(0);
 }
@@ -307,7 +307,7 @@ Tr_exp Tr_forExp(Tr_access access,
                  Tr_exp high,
                  Tr_exp body){
     Temp_label start = Temp_newlabel(), test = Temp_newlabel();
-    T_exp index = F_exp(access->access) // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
+	T_exp index = F_exp(access->access); // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
     T_exp high_exp = unEx(high);
     T_stm body_nx = unNx(body);    
     T_stm cond = T_Cjump(T_le, index, high_exp, loop, done);
