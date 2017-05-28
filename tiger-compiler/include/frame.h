@@ -65,4 +65,4 @@ Temp_temp F_FP(void);
 
 Temp_map F_tempMap;
 
-extern const int F_wordSize = 8;
+extern const int F_wordSize = 4;

@@ -288,8 +288,8 @@ static Temp_temp munchExp(T_exp e)
 	{
 		// TODO: fix call
 		Temp_temp r=munchExp(e->u.CALL.fun);
-		Temp_tempList list=munchArgs(0,e->u.CALL.args,F_formals(CODEGEN_frame));
-		emit(AS_Oper("jal `s0\n", calldefs, Temp_TempList(r, list), NULL));
+		//Temp_tempList list=munchArgs(0,e->u.CALL.args,F_formals(CODEGEN_frame));
+		//emit(AS_Oper("jal `s0\n", calldefs, Temp_TempList(r, list), NULL));
 	}
 	default:
 	{
