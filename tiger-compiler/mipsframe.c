@@ -9,7 +9,7 @@
 Temp_map F_tempMap = NULL;
 static F_access InFrame(int offset);
 static F_access InReg(Temp_temp reg);
-
+const int F_wordSize = 4;
 static F_access InFrame(int offset)
 {
 	F_access access;
@@ -130,9 +130,9 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 	F_access access;
 	int i = 1;
 	f->name = name;
-	f->formals = F_AccessList(NULL,NULL);
+	f->formals = NULL;
 	f->local_count = 0;
-	for (formals; formals; formals->tail)
+	for (formals; formals; formals=formals->tail)
 	{
 		if (formals->head)
 		{
@@ -143,7 +143,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 		{
 			access = InReg(Temp_newtemp());
 		}
-		if (f->formals->head)
+		if (f->formals)
 		{
 			tmp->tail = F_AccessList(access, NULL);
 			tmp = tmp->tail;
@@ -151,7 +151,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 		else
 		{
 			tmp = f->formals;
-			tmp->head = access;
+			tmp=F_AccessList(access, NULL);
 		}
 	}
 	return f;
