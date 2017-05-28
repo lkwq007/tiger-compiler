@@ -34,3 +34,93 @@ yacc 在分析整个文档的同时，建立好了一个其数据结构定义在
 
 `translate.h`生成的片段列表存放在 `fraglist`中，当中间树翻译完毕，可以遍历这个 List ，并调用 `printtree.h` 中的 `printStmList` 来进行中间树的可视化。下面是几个样例：
 
+tiger:
+
+```
+let
+    var arr1:=1
+in
+    arr1
+end
+```
+
+IR Tree
+
+```
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     MOVE(
+      TEMP t101,
+      CONST 1),
+     CONST 0)),
+   TEMP t101))
+```
+
+Tiger
+
+```
+/* correct if */
+let 
+function main(): int= 
+  if (10 > 20) then 30 else 40	
+in
+end
+```
+
+
+
+IR Tree
+
+```
+ LABEL L1
+ EXP(
+  ESEQ(
+   CJUMP(EQ,
+    ESEQ(
+     MOVE(
+      TEMP t102,
+      CONST 1),
+     ESEQ(
+      CJUMP(GT,
+       CONST 10,
+       CONST 20,
+       L2,L3),
+      ESEQ(
+       LABEL L3,
+       ESEQ(
+        MOVE(
+         TEMP t102,
+         CONST 0),
+        ESEQ(
+         LABEL L2,
+         TEMP t102))))),
+    CONST 0,
+    L5,L4),
+   ESEQ(
+    LABEL L4,
+    ESEQ(
+     MOVE(
+      MEM(
+       TEMP t103),
+      CONST 30),
+     ESEQ(
+      JUMP(
+       NAME L6),
+      ESEQ(
+       LABEL L5,
+       ESEQ(
+        MOVE(
+         MEM(
+          TEMP t103),
+         CONST 40),
+        ESEQ(
+         JUMP(
+          NAME L6),
+         ESEQ(
+          LABEL L6,
+          TEMP t103)))))))))
+
+```
+
