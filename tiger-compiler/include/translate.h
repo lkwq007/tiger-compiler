@@ -1,4 +1,6 @@
-#pragma once
+// #pragma once
+#ifndef TIGER_TRANSLATE_HEADER_
+#define TIGER_TRANSLATE_HEADER_
 /* translate.h */
 #include "temp.h"
 #include "frame.h"
@@ -93,3 +95,4 @@ Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index);
 
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals);
 F_fragList Tr_getResult(void);
+#endif
