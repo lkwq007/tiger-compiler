@@ -3,6 +3,8 @@
  * temp.h 
  *
  */
+#include <stdio.h>
+#include <symbol.h>
 
 typedef struct Temp_temp_ *Temp_temp;
 Temp_temp Temp_newtemp(void);
