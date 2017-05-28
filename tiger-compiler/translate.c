@@ -290,6 +290,10 @@ Tr_exp Tr_seqExp(Tr_expList stmts) {
 T_exp Tr_expListConversion(Tr_expList stmts) {
 	if (!stmts)
 		return NULL; //whether return NULL affects tree conversion? suppose not
+	else if (!stmts->tail)
+	{
+		return unEx(stmts->head);
+	}
 	else
 		return T_Eseq(T_Exp(unEx(stmts->head)), Tr_expListConversion(stmts->tail));
 }

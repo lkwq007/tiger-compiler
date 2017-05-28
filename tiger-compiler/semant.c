@@ -281,15 +281,15 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 	{
 		A_expList list = a->u.seq;
 		struct expty exp;
-		Tr_expList trlist = Tr_ExpList(NULL, NULL), temp;
+		Tr_expList trlist = NULL, temp = trlist;
 		if (list)
 		{
 			for (; list != NULL; list = list->tail)
 			{
 				exp = transExp(level, breakk, venv, tenv, list->head);
-				if (trlist->head == NULL)
+				if (trlist==temp)
 				{
-					trlist->head = exp.exp;
+					trlist = Tr_ExpList(exp.exp, NULL);
 					temp = trlist;
 				}
 				else
@@ -400,14 +400,22 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 	case A_letExp:
 	{
 		struct expty exp;
-		Tr_expList list = Tr_ExpList(Tr_noExp(), NULL), temp = list;
+		Tr_expList list = NULL, temp = list;
 		A_decList d;
 		S_beginScope(venv);
 		S_beginScope(tenv);
 		for (d = a->u.let.decs; d; d = d->tail)
 		{
-			temp->tail = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
-			temp = temp->tail;
+			if (temp == list)
+			{
+				list = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
+				temp = list;
+			}
+			else
+			{
+				temp->tail = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
+				temp = temp->tail;
+			}
 		}
 		exp = transExp(level, breakk, venv, tenv, a->u.let.body);
 		temp->tail = Tr_ExpList(exp.exp, NULL);
@@ -727,6 +735,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
 			}
 			S_endScope(venv);
+			printStmList(stdout, T_StmList(T_Label(func->u.fun.label),T_StmList(T_Exp(body.exp->u.ex), NULL)));
 		}
 		break;
 	}
