@@ -72,6 +72,7 @@ F_accessList F_formals(F_frame f) {
 
 F_access F_allocLocal(F_frame f, bool escape) {
     f->local_count++;
+    return InReg(Temp_newtemp());
 }
 
 F_frag F_StringFrag(Temp_label label, string str) {

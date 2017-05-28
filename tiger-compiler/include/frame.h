@@ -13,7 +13,7 @@ typedef struct F_access_*F_access;
 typedef struct F_accessList_ *F_accessList;
 
 struct F_access_ {
-    enum { inFrame, inReg } kind;
+    enum {inFrame, inReg} kind;
     union {
         int offset; /* inFrame */
         Temp_temp reg; /* inReg */
@@ -67,6 +67,6 @@ T_exp F_externalCall(string str, T_expList args);
 Temp_temp F_FP(void);
 
 Temp_map F_tempMap;
-#define F_wordSize 4
+// #define F_wordSize 4
 
 #endif

@@ -284,29 +284,6 @@ T_exp Tr_expListConversion(Tr_expList stmts) {
 }
 // ifExp is hard to write
 Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
-    Temp_label t = Temp_newlabel(), f = Temp_newlabel(), join = Temp_newlabel();
-    Cx condition = unCx(cond);
-    T_exp then_ex = unEx(then_);
-    T_exp else_ex = unEx(else_);
-    Temp_temp r = Temp_newtemp();
-    Tr_exp result = NULL;
-    T_stm joinJump = T_Jump(T_Name(join), Temp_LabelList(join, NULL));
-    doPatch(condition->trues, t);
-    doPatch(condition->falses, f);
-    if(then_->kind == Tr_ex)
-        return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(r), then_ex), T_Eseq(r, T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(r), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r)))))))))));
-    else if(then_->kind == Tr_nx) {
-        T_stm else_stm = unNx(else_), then_stm = unNx(then_);
-        return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
-    }
-}
-Tr_exp Tr_breakExp(Temp_label end){
-    // T_stm s = unNx(end);
-    T_stm s = T_Label(end);
-    if(s&&s->kind==T_LABEL){
-        return Tr_Nx(T_Jump(T_Name(s->u.LABEL), Temp_LabelList(s->u.LABEL, NULL)));
-    }
-    assert(0);
 	Temp_label t = Temp_newlabel(), f = Temp_newlabel(), join = Temp_newlabel();
 	Cx condition = unCx(cond);
 	T_exp then_ex = unEx(then_);
@@ -317,9 +294,9 @@ Tr_exp Tr_breakExp(Temp_label end){
 	doPatch(condition->trues, t);
 	doPatch(condition->falses, f);
 	if (then_->kind == Tr_ex)
-		return Tr_noExp();
+		// return Tr_noExp();
 	//todo fix!
-//		return Tr_Ex(T_Eseq(condition->stm,T_Seq(T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(T_Temp(r)), then_ex), T_Temp(r))),T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(T_Temp(r)), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r)))))))));
+		return Tr_Ex(T_Eseq(condition->stm,T_Seq(T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(T_Temp(r)), then_ex), T_Temp(r))),T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(T_Temp(r)), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r)))))))));
 	else if (then_->kind == Tr_nx) {
 		T_stm else_stm = unNx(else_), then_stm = unNx(then_);
 		return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));

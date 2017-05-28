@@ -732,6 +732,7 @@ F_fragList SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
-	transExp(Tr_outermost(), NULL, venv, tenv, exp);
+	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
+	printStmList(stdout, T_StmList(T_Exp(temp.exp->u.ex), NULL));
 	return Tr_getResult();
 }
