@@ -179,7 +179,8 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 				exp = transExp(level, breakk, venv, tenv, list->head);
 				if (tmplist == elist)
 				{
-					tmplist = Tr_ExpList(exp.exp, NULL);
+					elist = Tr_ExpList(exp.exp, NULL);
+					tmplist = elist;
 				}
 				else
 				{
