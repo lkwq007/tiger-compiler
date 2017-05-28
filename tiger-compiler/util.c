@@ -2,6 +2,7 @@
  * util.c - commonly used utility functions.
  */
 // #include <string.h>
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include "util.h"

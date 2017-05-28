@@ -179,11 +179,12 @@ T_relOp T_commute(T_relOp r)
 
 // auxiliary function to append tail to the tail of head, even when head is NULL
 // meant to add many versions of this for other list
-T_expList T_expListAppend(T_expList head, T_exp tail) {
-    T_expList tailList = T_ExpList(tail, NULL);
-    if(head) {
-        head->tail = tail;
-        return T_ExpList(head, NULL);
+// the code may not correct
+T_expList T_expListAppend(T_expList tail, T_exp head) {
+    T_expList tailList = T_ExpList(head, NULL);
+    if(tail) {
+        tail->tail = tailList;
+        return tailList;
     }
     else
         return tailList;

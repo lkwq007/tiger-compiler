@@ -9,6 +9,7 @@
 #include "absyn.h"
 #include "errormsg.h"
 #include "parse.h"
+#include "y.tab.h"
 
 extern int yyparse(void);
 extern A_exp absyn_root;
