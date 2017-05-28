@@ -25,6 +25,13 @@ Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail) {
     return list;
 }
 
+patchList PatchList(Temp_label head, patchList tail) {
+    patchList list = checked_malloc(sizeof(*list));
+    list->head = head;
+    list->tail = tail;
+    return list;
+}
+
 static Tr_exp Tr_Ex(T_exp ex) {
     Tr_exp res = checked_malloc(sizeof(*res));
     res->kind = Tr_ex;
@@ -176,7 +183,7 @@ Tr_exp Tr_numExp(int num) {
     return Tr_Ex(T_Const(num));
 }
 Tr_exp Tr_stringExp(string str) {
-    Temp_label newLabel = Temp_newLabel();
+    Temp_label newLabel = Temp_newlabel();
     Tr_exp expr = T_Name(newLabel);
     stringList = F_FragList(F_StringFrag(newLabel, str), stringList);
     return Tr_Ex(expr);
@@ -284,7 +291,7 @@ Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
     doPatch(condition->trues, t);
     doPatch(condition->falses, f);
     if(then_->kind == Tr_ex)
-        return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(r), then_ex), T_Eseq(r, T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(r), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), Temp_Temp(r)))))))))));
+        return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(r), then_ex), T_Eseq(r, T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(r), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r)))))))))));
     else if(then_->kind == Tr_nx) {
         T_stm else_stm = unNx(else_), then_stm = unNx(then_);
         return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
@@ -326,7 +333,7 @@ Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs) {
 }
 
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
-    return Tr_Ex(F_Exp(access->access->u.reg));
+    return Tr_Ex(F_exp(access->access->u.reg, T_Temp(F_FP())));
 }
 Tr_exp Tr_fieldVar(Tr_exp record, int index) {
     return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(record), T_Const(index * F_wordSize))));
@@ -335,7 +342,7 @@ Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index){
     return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(array), T_Binop(T_mul, unEx(index),  T_Const(F_wordSize)))));    
 }
 Tr_exp Tr_noExp() {
-    return Tr_Ex(Const(0));
+    return Tr_Ex(T_Const(0));
 }
 
 Tr_expList Tr_ExpList(Tr_exp head, Tr_expList tail)

@@ -112,3 +112,4 @@ Temp_temp F_FP(void){
         fp = Temp_newtemp();;
     return fp;
 }
+const int F_wordSize=8;

@@ -1,9 +1,12 @@
-#pragma once
-#include "frame.h"
+// #pragma once
+#ifndef TIGER_FRAME_HEADER_
+#define TIGER_FRAME_HEADER_
+
 #include "temp.h"
 #include "util.h"
 #include "tree.h"
-
+extern const int F_wordSize;
+// #define F_wordSize 8
 /* frame.h */
 typedef struct F_frame_ *F_frame;
 typedef struct F_access_*F_access;
@@ -65,4 +68,4 @@ Temp_temp F_FP(void);
 
 Temp_map F_tempMap;
 
-extern const int F_wordSize = 4;
+#endif
