@@ -26,6 +26,7 @@ static char rel_oper[][12] = {
  
 static void pr_stm(FILE *out, T_stm stm, int d)
 {
+	if(!stm) return;	
   switch (stm->kind) {
   case T_SEQ:
 	indent(out,d);
