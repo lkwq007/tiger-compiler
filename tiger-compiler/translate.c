@@ -297,8 +297,9 @@ Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
         return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
     }
 }
-Tr_exp Tr_breakExp(Tr_exp end){
-    T_stm s = unNx(end);
+Tr_exp Tr_breakExp(Temp_label end){
+    // T_stm s = unNx(end);
+    T_stm s = T_Label(end);
     if(s&&s->kind==T_LABEL){
         return Tr_Nx(T_Jump(T_Name(s->u.LABEL), Temp_LabelList(s->u.LABEL, NULL)));
     }
