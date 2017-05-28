@@ -32,21 +32,21 @@ int main(int argc, char *argv[])
 	int isFirstString = 1;
 	if (parse(argv[1])) frags = SEM_transProg(absyn_root);
 	else assert(0);
-	// for (;frags;frags=frags->tail) {
-	// 	if (frags->head->kind == F_procFrag) {
-	// 		printStmList(stdout, T_StmList(frags->head->u.proc.body, NULL));
-	// 	} else if (frags->head->kind == F_stringFrag) {
-	// 		if (isFirstString) {
-	// 			fprintf(stdout, "section .text\n\"\t%s\t.db\t\"%s\"\n",
-	// 					frags->head->u.stringg.str,
-	// 					frags->head->u.stringg.label->name);
-	// 			isFirstString = 0;
-	// 		} else {
-	// 			fprintf(stdout, "\t%s\t.db\t\"%s\"\n", 
-	// 					frags->head->u.stringg.str,
-	// 					frags->head->u.stringg.label->name);
-	// 		}
-	// 	}
-	// }
+	for (;frags;frags=frags->tail) {
+		if (frags->head->kind == F_procFrag) {
+			printStmList(stdout, T_StmList(frags->head->u.proc.body, NULL));
+		} else if (frags->head->kind == F_stringFrag) {
+			if (isFirstString) {
+				fprintf(stdout, "section .text\n\"\t%s\t.db\t\"%s\"\n",
+						frags->head->u.stringg.str,
+						frags->head->u.stringg.label->name);
+				isFirstString = 0;
+			} else {
+				fprintf(stdout, "\t%s\t.db\t\"%s\"\n", 
+						frags->head->u.stringg.str,
+						frags->head->u.stringg.label->name);
+			}
+		}
+	}
 	return 0;
 }

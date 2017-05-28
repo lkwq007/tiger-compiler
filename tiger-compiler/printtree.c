@@ -60,6 +60,7 @@ static void pr_stm(FILE *out, T_stm stm, int d)
 
 static void pr_tree_exp(FILE *out, T_exp exp, int d)
 {
+	if(!exp) return;
   switch (exp->kind) {
   case T_BINOP:
 	indent(out,d); fprintf(out, "BINOP(%s,\n", bin_oper[exp->u.BINOP.op]); 
