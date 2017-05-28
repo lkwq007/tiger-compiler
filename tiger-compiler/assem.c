@@ -2,7 +2,7 @@
  * mipscodegen.c - Functions to translate to Assem-instructions for
  *             the Jouette assembly language using Maximal Munch.
  */
-
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h> /* for atoi */
 #include <string.h> /* for strcpy */

@@ -86,7 +86,7 @@ Tr_exp Tr_forExp(Tr_access access, Temp_label end,
                       Tr_exp low,
                       Tr_exp high,
                       Tr_exp body);
-Tr_exp Tr_breakExp(Tr_exp end);                      
+Tr_exp Tr_breakExp(Temp_label end);
 Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs);
 Tr_exp Tr_noExp();
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level level);

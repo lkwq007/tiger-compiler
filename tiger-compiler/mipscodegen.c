@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS 1
 #include "codegen.h"
 #include "assem.h"
 #include "tree.h"
@@ -312,17 +313,17 @@ static void munchStm(T_stm s)
 			{
 				// MOVE(MEM(BINOP(PLUS, e1, CONST(n))), e2)
 				T_exp e1 = dst->u.MEM->u.BINOP.left, e2 = src;
-				int num = dst->u.MEM->u.BINOP.right;;
+				int num = dst->u.MEM->u.BINOP.right->u.CONST;
 				sprintf(buf, "sw `s1, %d(`s0)\n", num);
-				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL), NULL), NULL));
+				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 			else if (dst->u.MEM->kind == T_BINOP && dst->u.MEM->u.BINOP.op == T_plus && dst->u.MEM->u.BINOP.left->kind == T_CONST)
 			{
 				// MOVE(MEM(BINOP(PLUS, CONST(n), e1)), e2)
-				T_exp e1 = dst->u.BINOP.right, e2 = src;
-				int num = dst->u.BINOP.left->u.CONST;
+				T_exp e1 = dst->u.MEM->u.BINOP.right, e2 = src;
+				int num = dst->u.MEM->u.BINOP.left->u.CONST;
 				sprintf(buf, "sw `s1, %d(`s0)\n", num);
-				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL), NULL), NULL));
+				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 			else if (dst->u.MEM->kind == T_CONST)
 			{
@@ -338,14 +339,14 @@ static void munchStm(T_stm s)
 				// MOVE(MEM(e1), MEM(e2))
 				T_exp e1 = dst->u.MEM, e2 = src->u.MEM;
 				sprintf(buf, "lw $t0, 0('s1)\nsw $t0, 0('s1)\n");
-				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL), NULL), NULL));
+				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 			else
 			{
 				// MOVE(MEM(e1), e2)
 				T_exp e1 = dst->u.MEM, e2 = src;
 				sprintf(buf, "sw `s1, 0(`s0)\n");
-				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL), NULL), NULL));
+				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 		}
 		else if (dst->kind == T_TEMP)
@@ -371,7 +372,7 @@ static void munchStm(T_stm s)
 	{
 		// LABETemp_TempList()
 		sprintf(buf, "%s:\n", Temp_labelstring(s->u.LABEL));
-		emit(AS_LabeTemp_TempList(buf, s->u.LABEL));
+		emit(AS_Label(buf,s->u.LABEL));
 		break;
 	}
 	case T_JUMP:

@@ -67,5 +67,6 @@ T_exp F_externalCall(string str, T_expList args);
 Temp_temp F_FP(void);
 
 Temp_map F_tempMap;
+#define F_wordSize 4
 
 #endif

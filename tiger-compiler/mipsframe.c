@@ -5,6 +5,7 @@
 #include "temp.h"
 #include "tree.h"
 #include "assem.h"
+
 Temp_map F_tempMap = NULL;
 static F_access InFrame(int offset);
 static F_access InReg(Temp_temp reg);
@@ -113,14 +114,46 @@ F_fragList F_FragList(F_frag head, F_fragList tail)
 	return fragList;
 }
 
+F_accessList F_AccessList(F_access head, F_accessList tail)
+{
+	F_accessList list = (F_accessList)checked_malloc(sizeof(*list));
+	list->head = head;
+	list->tail = tail;
+	return list;
+}
+
 F_frame F_newFrame(Temp_label name, U_boolList formals)
 {
 	// TODO complete frame
 	F_frame f = (F_frame)checked_malloc(sizeof(*f));
+	F_accessList tmp;
+	F_access access;
+	int i = 1;
 	f->name = name;
-	f->formals = formals;
+	f->formals = F_AccessList(NULL,NULL);
 	f->local_count = 0;
-	
+	for (formals; formals; formals->tail)
+	{
+		if (formals->head)
+		{
+			f->local_count++;
+			access = InFrame(-f->local_count*F_wordSize);
+		}
+		else
+		{
+			access = InReg(Temp_newtemp());
+		}
+		if (f->formals->head)
+		{
+			tmp->tail = F_AccessList(access, NULL);
+			tmp = tmp->tail;
+		}
+		else
+		{
+			tmp = f->formals;
+			tmp->head = access;
+		}
+	}
 	return f;
 }
 
@@ -174,7 +207,7 @@ AS_instrList F_procEntryExit2(AS_instrList body)
 {
 	if (!returnSink)
 	{	
-		returnSink = Temp_TempList(F_RA(), F_callee_saves());
+		returnSink = Temp_TempList(F_RA(), NULL);
 	}
 	return AS_splice(body, AS_InstrList(AS_Oper("", NULL, returnSink, NULL), NULL));
 }

@@ -6,6 +6,7 @@
 #include "temp.h"
 #include "util.h"
 #include <stdio.h>
+#define _CRT_SECURE_NO_WARNINGS 1
 typedef struct {Temp_labelList labels;} *AS_targets;
 AS_targets AS_Targets(Temp_labelList labels);
 
