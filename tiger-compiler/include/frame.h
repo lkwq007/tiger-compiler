@@ -48,3 +48,7 @@ F_accessList F_formals(F_frame f);
 F_access F_allocLocal(F_frame f, bool escape);
 T_exp F_exp(F_access acc, T_exp framePtr);
 T_exp F_externalCall(string str, T_expList args);
+
+Temp_map F_tempMap;
+
+int F_wordSize = 4;
