@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
 	F_fragList frags;
 	int isFirstString = 1;
 	if (parse(argv[1])) frags = SEM_transProg(absyn_root);
+	else assert(0);
 	for (;frags;frags=frags->tail) {
 		if (frags->head->kind == F_procFrag) {
 			printStmList(stdout, T_StmList(frags->head->u.proc.body, NULL));

@@ -1,7 +1,8 @@
 %{
 #include <string.h>
 #include "util.h"
-#include "tokens.h"
+#include "absyn.h"
+#include "y.tab.h"
 #include "errormsg.h"
 
 int charPos=1;
@@ -47,38 +48,19 @@ void adjust(void)
 %}
 %x COMMENT STR
 %%
-
-"/*" {adjust();BEGIN(COMMENT), commentDepth++;}
-<COMMENT>{
-    "/*" {adjust();BEGIN(COMMENT), commentDepth++;}
-    "*/" {adjust(); if (--commentDepth == 0) BEGIN(INITIAL);}
-    [^"\n"]	 {adjust();}    
-    "\n"	 {adjust(); EM_newline();}
-}
-
-
-\" {adjust(); BEGIN(STR); strInit();}
-<STR>{
-	\" 			{adjust(); yylval.sval=str; BEGIN(INITIAL); return STRING;}
-	\\n			{adjust(); appendStr("\n");}
-	\\t			{adjust(); appendStr("\t");}
-	\n			{adjust(); EM_error(EM_tokPos, "illegal token");}
-	. 	{adjust(); appendStr(yytext);}
-    <<EOF>> {adjust(); EM_error(EM_tokPos,"EOF in string");}
-}
-
 [ \t]	{adjust(); continue;}
 (\n|\r\n)  {adjust(); EM_newline(); continue;}
-
-" "	 {adjust(); continue;}
-\n	 {adjust(); EM_newline(); continue;}
-","	 {adjust(); return COMMA;}
-for  	 {adjust(); return FOR;}
-[0-9]+	 {adjust(); yylval.ival=atoi(yytext); return INT;}
-
 "*"   {adjust(); return TIMES;}
 "/"   {adjust(); return DIVIDE;}
+"/*"  {adjust(); BEGIN(COMMENT); commentDepth++;}
+<COMMENT>{
+	"/*" {adjust(); commentDepth++;}
+	"*/" {adjust(); if (--commentDepth == 0) BEGIN(INITIAL);}
+	[^\n] {adjust();}
+	(\n|\r\n)	{adjust(); EM_newline();}
+}
 "while" {adjust(); return WHILE;}
+"for"   {adjust(); return FOR;}
 "to"	{adjust(); return TO;}
 "break" {adjust(); return BREAK;}
 "let"	 {adjust(); return LET;}
@@ -95,6 +77,7 @@ for  	 {adjust(); return FOR;}
 "of"	  {adjust(); return OF;}
 "nil"	  {adjust(); return NIL;}
 [a-zA-Z][a-zA-Z0-9_]*    {adjust(); yylval.sval=yytext; return ID;}
+","	  {adjust(); return COMMA;}
 ":"	  {adjust(); return COLON;}
 ";"	  {adjust(); return SEMICOLON;}
 "("	  {adjust(); return LPAREN;}
@@ -115,5 +98,22 @@ for  	 {adjust(); return FOR;}
 ":="  {adjust(); return ASSIGN;}
 "&"	  {adjust(); return AND;}
 "|"	  {adjust(); return OR;}
+[0-9]+	 {adjust(); yylval.ival=atoi(yytext); return INT;}
 
+\" {adjust(); BEGIN(STR); strInit();}
+<STR>{
+	\" 			{adjust(); yylval.sval=str; BEGIN(INITIAL); return STRING;}
+	\\n			{adjust(); appendStr("\n");}
+	\\t			{adjust(); appendStr("\t");}
+	\\[0-9]{3}	{adjust(); appendStr(yytext);}
+	\\^[GHIJLM]	{adjust(); appendStr(yytext);}
+	\\\\		{adjust(); appendStr(yytext);}
+	\\\"		{adjust(); appendStr(yytext);}
+	\\[ \n\t\r\f]+\\ {adjust();}
+	\\(.|\n)	{adjust(); EM_error(EM_tokPos, "illegal token");}
+	\n			{adjust(); EM_error(EM_tokPos, "illegal token");}
+	[^\"\\\n]+ 	{adjust(); appendStr(yytext);}
+}
 .	 {adjust(); EM_error(EM_tokPos,"illegal token");}
+%%
+
