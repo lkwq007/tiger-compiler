@@ -434,7 +434,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			{
 				int size = 0;
 				Ty_fieldList tylist = type->u.record;
-				Tr_expList trlist = Tr_ExpList(Tr_noExp(), NULL), temp = NULL;
+				Tr_expList trlist = NULL, temp = trlist;
 				struct expty exp;
 				for (; list&&tylist; list = list->tail, tylist = tylist->tail)
 				{
@@ -447,8 +447,8 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 						}
 						if (temp == NULL)
 						{
+							trlist = Tr_ExpList(exp.exp, NULL);
 							temp = trlist;
-							temp->head = exp.exp;
 						}
 						else
 						{

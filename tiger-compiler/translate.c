@@ -273,10 +273,11 @@ Tr_exp Tr_recordExp(Tr_expList fields, int size) {
 	Temp_temp r = Temp_newtemp();
 	T_stm alloc = T_Move(T_Temp(r),
 		F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL)));
-	T_stm seq = NULL;
+	T_stm seq = T_Exp(T_Const(0));
 	for (int i = size - 1; fields; fields = fields->tail, i--)
-		seq = T_Seq(T_Move(T_Mem(T_Binop(T_plus, T_Temp(r), T_Const(i * F_wordSize))),
-			unEx(fields->head)), seq);
+	{
+		seq = T_Seq(T_Move(T_Mem(T_Binop(T_plus, T_Temp(r), T_Const(i * F_wordSize))), unEx(fields->head)), seq);
+	}
 	return Tr_Ex(T_Eseq(T_Seq(alloc, seq), T_Temp(r)));
 }
 Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp init) {
@@ -338,15 +339,25 @@ Tr_exp Tr_breakExp(Temp_label end) {
 	return Tr_noExp();
 }
 
-// move the condition check to latter part to avoid bugs out of overflowing
-Tr_exp Tr_whileExp(Tr_exp cond, Temp_label end, Tr_exp body) {
-	Temp_label start = Temp_newlabel(), test = Temp_newlabel();
-	T_exp cond_ex = unEx(cond);
-	T_stm body_nx = unNx(body);
-	// return Tr_noExp();
-	// todo need fix
-	return Tr_Ex(T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0))))))));
+
+Tr_exp Tr_whileExp(Tr_exp test, Temp_label end, Tr_exp body)
+{
+	Temp_label testLabel = Temp_newlabel(), bodyLabel = Temp_newlabel();
+	return Tr_Ex(T_Eseq(T_Jump(T_Name(testLabel), Temp_LabelList(testLabel, NULL)),
+		T_Eseq(T_Label(bodyLabel), T_Eseq(unNx(body),
+			T_Eseq(T_Label(testLabel),
+				T_Eseq(T_Cjump(T_eq, unEx(test), T_Const(0), end, bodyLabel),
+					T_Eseq(T_Label(end), T_Const(0))))))));
 }
+// move the condition check to latter part to avoid bugs out of overflowing
+//Tr_exp Tr_whileExp(Tr_exp cond, Temp_label end, Tr_exp body) {
+//	Temp_label start = Temp_newlabel(), test = Temp_newlabel();
+//	T_exp cond_ex = unEx(cond);
+//	T_stm body_nx = unNx(body);
+//	// return Tr_noExp();
+//	// todo need fix
+//	return Tr_Ex(T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0))))))));
+//}
 Tr_exp Tr_forExp(Tr_access access,
 	Temp_label end,
 	Tr_exp low,
