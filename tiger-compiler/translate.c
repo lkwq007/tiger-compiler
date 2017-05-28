@@ -289,11 +289,15 @@ Tr_exp Tr_seqExp(Tr_expList stmts) {
 // auxiliary function for recursively define Tr_seqExp
 T_exp Tr_expListConversion(Tr_expList stmts) {
 	if (!stmts)
+<<<<<<< HEAD
 		return NULL; //whether return NULL affects tree conversion? suppose not
 	else if (!stmts->tail)
 	{
 		return unEx(stmts->head);
 	}
+=======
+		return T_Const(0); //whether return NULL affects tree conversion? suppose not
+>>>>>>> ed8dda3f12208d5ed51d4e747fbb4689dded6c11
 	else
 		return T_Eseq(T_Exp(unEx(stmts->head)), Tr_expListConversion(stmts->tail));
 }
