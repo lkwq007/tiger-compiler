@@ -199,6 +199,7 @@ Tr_exp Tr_stringExp(string str) {
 T_expList translateToTreeExpList(Tr_expList argList) {
 	T_expList res = NULL;
 	T_expList tailList = NULL;
+    if(!argList) return NULL;
 	Tr_exp iter = argList->head;
 	for (; iter ; iter = argList->tail) {
 		if (res) {
@@ -209,7 +210,7 @@ T_expList translateToTreeExpList(Tr_expList argList) {
 			tailList = res;
 		}
 	}
-	return eList;
+	return res;
 }
 
 Tr_exp Tr_callExp(Tr_level level, Temp_label label, Tr_expList argList) {
@@ -353,7 +354,7 @@ Tr_exp Tr_forExp(Tr_access access,
 	T_stm body_nx = unNx(body);
 	T_stm cond = T_Cjump(T_le, index, high_exp, start, end);
 	T_stm mv = T_Move(index, unEx(low));
-	T_stm incre = T_Move(index, T_Binop(A_plusOp, index, T_Const(1)));
+	T_stm incre = T_Move(index, T_Binop(T_plus, index, T_Const(1)));
 	body_nx = T_Seq(body_nx, incre);
 	// return Tr_noExp();
 	// todo need fix
