@@ -1,7 +1,7 @@
 /*
  * main.c
  */
-
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include "util.h"
 #include "symbol.h"
@@ -18,20 +18,20 @@
 #include "escape.h"
 #include "parse.h"
 #include "codegen.h"
-
 extern bool anyErrors;
 
 /* print the assembly language instructions to filename.s */
 static void doProc(FILE *out, F_frame frame, T_stm body)
 {
  AS_proc proc;
- struct RA_result allocation;
+// struct RA_result allocation;
  T_stmList stmList;
  AS_instrList iList;
 
  stmList = C_linearize(body);
  stmList = C_traceSchedule(C_basicBlocks(stmList));
- /* printStmList(stdout, stmList);*/
+  printStmList(stdout, stmList);
+  return;
  iList  = F_codegen(frame, stmList); /* 9 */
 
  fprintf(out, "BEGIN %s\n", Temp_labelstring(F_name(frame)));
@@ -43,7 +43,7 @@ static void doProc(FILE *out, F_frame frame, T_stm body)
 int main(int argc, string *argv)
 {
  A_exp absyn_root;
- S_table base_env, base_tenv;
+ //S_table base_env, base_tenv;
  F_fragList frags;
  char outfile[100];
  FILE *out = stdout;
@@ -67,8 +67,8 @@ int main(int argc, string *argv)
    sprintf(outfile, "%s.s", argv[1]);
    out = fopen(outfile, "w");
    /* Chapter 8, 9, 10, 11 & 12 */
-   for (;frags;frags=frags->tail)
-     if (frags->head->kind == F_procFrag) 
+   for (; frags; frags = frags->tail)
+	   if (frags->head->kind == F_procFrag)
        doProc(out, frags->head->u.proc.frame, frags->head->u.proc.body);
      else if (frags->head->kind == F_stringFrag) 
        fprintf(out, "%s\n", frags->head->u.stringg.str);
