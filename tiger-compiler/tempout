@@ -1,98 +1,18 @@
- LABEL L1
- EXP(
-  ESEQ(
-   CJUMP(EQ,
-    ESEQ(
-     MOVE(
-      TEMP t102,
-      CONST 1),
-     ESEQ(
-      CJUMP(GT,
-       CONST 10,
-       CONST 20,
-       L2,L3),
-      ESEQ(
-       LABEL L3,
-       ESEQ(
-        MOVE(
-         TEMP t102,
-         CONST 0),
-        ESEQ(
-         LABEL L2,
-         TEMP t102))))),
-    CONST 0,
-    L5,L4),
-   ESEQ(
-    LABEL L4,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t103),
-      CONST 30),
-     ESEQ(
-      JUMP(
-       NAME L6),
-      ESEQ(
-       LABEL L5,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t103),
-         CONST 40),
-        ESEQ(
-         JUMP(
-          NAME L6),
-         ESEQ(
-          LABEL L6,
-          TEMP t103)))))))))
+ LABEL main
  EXP(
   ESEQ(
    EXP(
-    CONST 0),
-   CONST 0))
- EXP(
-  ESEQ(
-   CJUMP(EQ,
     ESEQ(
      MOVE(
-      TEMP t102,
-      CONST 1),
-     ESEQ(
-      CJUMP(GT,
-       CONST 10,
-       CONST 20,
-       L2,L3),
-      ESEQ(
-       LABEL L3,
-       ESEQ(
-        MOVE(
-         TEMP t102,
-         CONST 0),
-        ESEQ(
-         LABEL L2,
-         TEMP t102))))),
-    CONST 0,
-    L5,L4),
+      TEMP t$x100,
+      CALL(
+       NAME initArray,
+        CONST 10,
+        CONST 0)),
+     CONST 0)),
    ESEQ(
-    LABEL L4,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t103),
-      CONST 30),
-     ESEQ(
-      JUMP(
-       NAME L6),
-      ESEQ(
-       LABEL L5,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t103),
-         CONST 40),
-        ESEQ(
-         JUMP(
-          NAME L6),
-         ESEQ(
-          LABEL L6,
-          TEMP t103)))))))))
+    EXP(
+     TEMP t$x100),
+    CALL(
+     NAME print,
+      NAME L0))))

@@ -1,5 +1,7 @@
 ## Tiger-Compiler Report
 
+[TOC]
+
 ### 词法分析
 
 我们使用 flex 进行词法分析。
@@ -750,3 +752,100 @@ Error
 test6.tig:4.8: Undefined nameTy c
 test6.tig:6.8: Undefined nameTy d
 ```
+### 汇编生成
+
+当通过 `semant.h `将抽象语法树转换成 IR 树之后，`canon.h`提供了可以将 IR 树进行标准化的函数 `C_linearize`，它将上一步的 IR 树中的 `ESEQ` 与`CALL`节点消除，`canon.h`还提供了 `C_basicBlocks` 与`C_traceSchedule`，可以进一步地得到该 IR 树的基本块与轨迹。最后 `mipscodegen.h`提供的 `F_codegen` 利用 `maximal munch`算法对 IR 树进行覆盖，进而生成 mips 汇编代码。下面是几个样例：
+
+Tiger
+
+```
+/* an array arrtype = array of int and an array variable */
+let
+	type arrtype = array of int
+	var arr1:arrtype := arrtype [10] of 0
+in
+	arr1;print("He\
+	\llo, World\
+				\")
+end
+```
+
+mipsAssembly
+
+```
+.data
+L0: .asciiz "Hello, World"
+
+.text
+.global main
+main: #BEGIN main
+addi $sp, $sp, -4
+sw $fp, 0($sp)
+move $fp, $sp
+addi $sp, $sp, -10240
+L2:
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+li $x104, 0
+addi $sp, $sp, -4
+sw $x104, 0($sp)
+ # formal
+li $x105, 10
+addi $sp, $sp, -4
+sw $x105, 0($sp)
+ # formal
+jal initArray
+addi $sp, $sp, 8
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+move $x100, $v0
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+addi $sp, $sp, -4
+sw L0, 0($sp)
+ # formal
+jal print
+addi $sp, $sp, 4
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+move $v0, $v0
+j L1
+L1:
+
+move $sp, $fp
+ld $fp, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+#END main
+
+
+```
+
+Tiger
+
+```
+/* error: mutually recursive types thet do not pass through record or array */
+let 
+
+type a=c
+type b=a
+type c=d
+type d=a
+
+in
+ ""
+end
+```
+
+Error
+
+```
+./testfiles/test16.tig:9.2: Error type def loop in �
+```
+
+### 使用说明
+
+1. 进入工作区根目录的 `tiger-compiler` 文件夹。
+2. `make $(the test u want to conduct)` ，`the test u want to conduct`包括 `parsetest` `semantest` `assemtest`，分别对应 生成抽象语法树，生成 IR 树， 生成 mips 汇编。
+3. `./bin/$(the program generated) ./testfiles/$(the testfile u want to use)`注意，对于 `parsetest`与`semantest`，生成树将直接被打印在 terminal 的窗口，你可以手动在命令后加上`>$(output file)`将其输出到文件。对于 `assemtest`，汇编代码将被生成在 `./testfiles`目录，文件名与测试文件相同，扩展名为 `.s`。
+4. 当你修改过代码之后，可以先进行 `make clean` ，然后回到第二步。
