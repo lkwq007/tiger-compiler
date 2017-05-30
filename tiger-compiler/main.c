@@ -30,9 +30,9 @@ static void doProc(FILE *out, F_frame frame, T_stm body)
 
  stmList = C_linearize(body);
  stmList = C_traceSchedule(C_basicBlocks(stmList));
-  printStmList(stdout, stmList);
+  //printStmList(stdout, stmList);
  iList  = F_codegen(frame, stmList); /* 9 */
- Temp_dumpMap(stdout, F_tempMap);
+ //Temp_dumpMap(stdout, F_tempMap);
  fprintf(out, "%s: #BEGIN %s\n", Temp_labelstring(F_name(frame)), Temp_labelstring(F_name(frame)));
  fprintf(out, "addi $sp, $sp, -4\nsw $fp, 0($sp)\nmove $fp, $sp\naddi $sp, $sp, -10240\n");
  AS_printInstrList (out, iList,

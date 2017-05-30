@@ -400,7 +400,7 @@ Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
 	T_exp address = NULL;
 	while (access->level != level)
 	{
-		printf("static link\n");
+		//printf("static link\n");
 		if (address)
 		{
 			address = T_Mem(T_Binop(T_plus, address, T_Const(0)));
