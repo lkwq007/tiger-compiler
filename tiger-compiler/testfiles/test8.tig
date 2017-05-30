@@ -1,6 +1,2 @@
 /* correct if */
-let 
-function main(): int= 
-  if (10 > 20) then 30 else 40	
-in
-end
+if (10 > 20) then 30 else 40	
