@@ -16,6 +16,7 @@ struct Tr_access_
 {
 	Tr_level level;
 	F_access access;
+	Tr_exp loc;
 };
 
 struct Tr_level_
@@ -65,6 +66,7 @@ Tr_level Tr_outermost(void);
 Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals);
 Tr_accessList Tr_formals(Tr_level level);
 Tr_access Tr_allocLocal(Tr_level level, bool escape);
+T_exp unEx(Tr_exp e);
 
 
 

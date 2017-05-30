@@ -6,6 +6,15 @@
 
 F_access InReg(Temp_temp reg);
 
+Temp_map F_tempMap = NULL;
+static void F_map(string str, Temp_temp temp)
+{
+    if (!F_tempMap)
+    {
+        F_tempMap = Temp_name();
+    }
+    Temp_enter(F_tempMap, temp, str);
+}
 
 static F_access F_Access(Temp_temp reg) {
     F_access res = checked_malloc(sizeof(*res));

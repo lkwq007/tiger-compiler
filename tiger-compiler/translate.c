@@ -58,7 +58,7 @@ static Tr_exp Tr_Cx(patchList trues, patchList falses, T_stm stm) {
 }
 
 
-static T_exp unEx(Tr_exp e)
+T_exp unEx(Tr_exp e)
 {
 	switch (e->kind) {
 	case Tr_ex:
@@ -150,7 +150,7 @@ static patchList joinPatch(patchList fList, patchList sList)
 
 Tr_level Tr_outermost(void) {
 	if (!outer)
-		outer = Tr_newLevel(NULL, Temp_newlabel(), NULL);
+		outer = Tr_newLevel(NULL, Temp_namedlabel("main"), NULL);
 	return outer;
 }
 Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
@@ -182,6 +182,7 @@ Tr_access Tr_allocLocal(Tr_level level, bool escape) {
 	local->level = level;
 	// local var stores in register by default
 	local->access = F_allocLocal(level->frame, escape);
+	//local->loc = Tr_Nx(T_Move(T_Temp(F_SP), T_Binop(T_plus, T_Temp(F_SP()), T_Const(-4))));
 	return local;
 }
 
@@ -201,7 +202,8 @@ T_expList translateToTreeExpList(Tr_expList argList) {
 	T_expList tailList = NULL;
     if(!argList) return NULL;
 	Tr_exp iter = argList->head;
-	for (; iter ; iter = argList->tail) {
+	for (; argList; argList = argList->tail) {
+		iter = argList->head;
 		if (res) {
 			tailList->tail = T_ExpList(unEx(iter), NULL);
 			tailList = tailList->tail;
@@ -364,6 +366,7 @@ Tr_exp Tr_forExp(Tr_access access,
 	Tr_exp high,
 	Tr_exp body) {
 	Temp_label start = Temp_newlabel(), test = Temp_newlabel();
+	// must be the same frame
 	T_exp index = F_exp(access->access, T_Temp(F_FP())); // rely on hypothesis that all temp stores in reg, since F_exp pack the inherit choice u need not change it
 	T_exp high_exp = unEx(high);
 	T_stm body_nx = unNx(body);
@@ -373,7 +376,20 @@ Tr_exp Tr_forExp(Tr_access access,
 	body_nx = T_Seq(body_nx, incre);
 	// return Tr_noExp();
 	// todo need fix
-	return Tr_Ex(T_Eseq(mv, T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), T_Eseq(T_Label(start), T_Eseq(body_nx, T_Eseq(T_Label(test), T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), T_Eseq(T_Label(end), T_Const(0)))))))));
+	//return Tr_Ex(T_Eseq(mv, 
+	//	T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), 
+	//		T_Eseq(T_Label(start), 
+	//			T_Eseq(body_nx, 
+	//				T_Eseq(T_Label(test), 
+	//					T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), 
+	//						T_Eseq(T_Label(end), T_Const(0)))))))));
+	return Tr_Ex(T_Eseq(mv, 
+		T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), 
+			T_Eseq(T_Label(start), 
+				T_Eseq(body_nx, 
+					T_Eseq(T_Label(test), 
+						T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), 
+							T_Eseq(T_Label(end), T_Const(0)))))))));
 
 }
 Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs) {
@@ -381,7 +397,25 @@ Tr_exp Tr_assignExp(Tr_exp lhs, Tr_exp rhs) {
 }
 
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
-	return Tr_Ex(F_exp(access->access, T_Temp(F_FP())));
+	T_exp address = NULL;
+	while (access->level != level)
+	{
+		printf("static link\n");
+		if (address)
+		{
+			address = T_Mem(T_Binop(T_plus, address, T_Const(0)));
+		}
+		else
+		{
+			address = T_Mem(T_Binop(T_plus, T_Temp(F_FP()),T_Const(0)));
+		}
+		level = level->parent;
+	}
+	if (!address)
+	{
+		address = T_Temp(F_FP());
+	}
+	return Tr_Ex(F_exp(access->access, address));
 }
 Tr_exp Tr_fieldVar(Tr_exp record, int index) {
 	return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(record), T_Const(index * F_wordSize))));
@@ -403,7 +437,7 @@ Tr_expList Tr_ExpList(Tr_exp head, Tr_expList tail)
 
 void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals)
 {
-	F_frag pfrag = F_ProcFrag(unNx(body), level->frame);
+	F_frag pfrag = F_ProcFrag(T_Move(T_Temp(F_RV()), unEx(body)), level->frame);
 	fragList = F_FragList(pfrag, fragList);
 }
 

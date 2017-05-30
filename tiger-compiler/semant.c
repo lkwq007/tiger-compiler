@@ -119,7 +119,7 @@ static Ty_fieldList makeFieldList(S_table tenv, A_fieldList record)
 	return Ty_FieldList(Ty_Field(name, temp), makeFieldList(tenv, record->tail));
 }
 
-// make escape list from params
+// make escape list from params assume all escape
 static U_boolList makeFormalList(A_fieldList params)
 {
 	if (params == NULL)
@@ -177,7 +177,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			for (list = a->u.call.args, tylist = binding->u.fun.formals; list&&tylist; list = list->tail, tylist = tylist->tail)
 			{
 				exp = transExp(level, breakk, venv, tenv, list->head);
-				if (tmplist == elist)
+				if (tmplist == NULL)
 				{
 					elist = Tr_ExpList(exp.exp, NULL);
 					tmplist = elist;
@@ -281,13 +281,13 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 	{
 		A_expList list = a->u.seq;
 		struct expty exp;
-		Tr_expList trlist = NULL, temp = trlist;
+		Tr_expList trlist = NULL, temp;
 		if (list)
 		{
 			for (; list != NULL; list = list->tail)
 			{
 				exp = transExp(level, breakk, venv, tenv, list->head);
-				if (trlist==temp)
+				if (trlist == NULL)
 				{
 					trlist = Tr_ExpList(exp.exp, NULL);
 					temp = trlist;
@@ -401,24 +401,36 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 	{
 		struct expty exp;
 		Tr_expList list = NULL, temp = list;
+		Tr_exp dec;
 		A_decList d;
 		S_beginScope(venv);
 		S_beginScope(tenv);
 		for (d = a->u.let.decs; d; d = d->tail)
 		{
-			if (temp == list)
+			dec = transDec(level, breakk, venv, tenv, d->head);
+			if (dec)
 			{
-				list = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
-				temp = list;
-			}
-			else
-			{
-				temp->tail = Tr_ExpList(transDec(level, breakk, venv, tenv, d->head), NULL);
-				temp = temp->tail;
+				if (list == NULL)
+				{
+					list = Tr_ExpList(dec, NULL);
+					temp = list;
+				}
+				else
+				{
+					temp->tail = Tr_ExpList(dec, NULL);
+					temp = temp->tail;
+				}
 			}
 		}
 		exp = transExp(level, breakk, venv, tenv, a->u.let.body);
-		temp->tail = Tr_ExpList(exp.exp, NULL);
+		if (temp)
+		{
+			temp->tail = Tr_ExpList(exp.exp, NULL);
+		}
+		else
+		{
+			list = Tr_ExpList(exp.exp, NULL);
+		}
 		S_endScope(tenv);
 		S_endScope(venv);
 		return expTy(Tr_seqExp(list), exp.ty);
@@ -572,7 +584,7 @@ Ty_ty transTy(S_table tenv, A_ty a)
 	{
 	case A_nameTy:
 	{
-		Ty_ty type = S_look_ty(tenv, a->u.name);
+		Ty_ty type = S_look(tenv, a->u.name);
 		if (type == NULL)
 		{
 			EM_error(a->pos, "Undefined nameTy %s", S_name(a->u.name));
@@ -673,6 +685,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				type = type->u.name.ty;
 			}
 		}
+		return NULL;
 		break;
 	}
 	// handle recursive func and multi func
@@ -728,15 +741,15 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			}
 			acclist = Tr_formals(func->u.fun.level);
 			body = transExp(func->u.fun.level, breakk, venv, tenv, f->body);
-			// TODO acclist
 			Tr_procEntryExit(func->u.fun.level, body.exp, acclist);
 			if (!is_equal_ty(resultTy, body.ty))
 			{
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
 			}
 			S_endScope(venv);
-			printStmList(stdout, T_StmList(T_Label(func->u.fun.label),T_StmList(T_Exp(body.exp->u.ex), NULL)));
+			printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
 		}
+		return NULL;
 		break;
 	}
 	}
@@ -748,7 +761,9 @@ F_fragList SEM_transProg(A_exp exp)
 {
 	S_table venv = E_base_venv();
 	S_table tenv = E_base_tenv();
+	Tr_level level = Tr_outermost();
 	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
-	printStmList(stdout, T_StmList(T_Exp(temp.exp->u.ex), NULL));
+	Tr_procEntryExit(Tr_outermost(), temp.exp, NULL);
+	printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
 	return Tr_getResult();
 }

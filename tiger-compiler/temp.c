@@ -38,7 +38,7 @@ Temp_temp Temp_newtemp(void)
 {Temp_temp p = (Temp_temp) checked_malloc(sizeof (*p));
  p->num=temps++;
  {char r[16];
-  sprintf(r, "%d", p->num);
+  sprintf(r, "$x%d", p->num);
   Temp_enter(Temp_name(), p, String(r));
  }
  return p;

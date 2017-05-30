@@ -10,6 +10,7 @@ Temp_map F_tempMap = NULL;
 static F_access InFrame(int offset);
 static F_access InReg(Temp_temp reg);
 const int F_wordSize = 4;
+
 static F_access InFrame(int offset)
 {
 	F_access access;
@@ -87,7 +88,13 @@ F_access F_staticLink()
 	return static_link;
 }
 
-// contruct f_stringfrag
+
+bool F_doesEscape(F_access access)
+{
+	return (access != NULL && access->kind == inFrame);
+}
+
+// contruct f_stringfrag // same with zard's
 F_frag F_StringFrag(Temp_label label, string str)
 {
 	F_frag frag = (F_frag)checked_malloc(sizeof(*frag));
@@ -97,6 +104,7 @@ F_frag F_StringFrag(Temp_label label, string str)
 	return frag;
 }
 
+// same with zard's
 F_frag F_ProcFrag(T_stm body, F_frame frame)
 {
 	F_frag frag = (F_frag)checked_malloc(sizeof(*frag));
@@ -106,6 +114,7 @@ F_frag F_ProcFrag(T_stm body, F_frame frame)
 	return frag;
 }
 
+// same with zard's
 F_fragList F_FragList(F_frag head, F_fragList tail)
 {
 	F_fragList fragList = (F_fragList)checked_malloc(sizeof(*fragList));
@@ -114,6 +123,7 @@ F_fragList F_FragList(F_frag head, F_fragList tail)
 	return fragList;
 }
 
+// same with zard's
 F_accessList F_AccessList(F_access head, F_accessList tail)
 {
 	F_accessList list = (F_accessList)checked_malloc(sizeof(*list));
@@ -136,7 +146,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 	{
 		if (formals->head)
 		{
-			access = InFrame(-f->local_count*F_wordSize);
+			access = InFrame(f->local_count*F_wordSize);
 			f->local_count++;
 		}
 		else
@@ -152,22 +162,25 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 		{
 			f->formals =F_AccessList(access, NULL);
 			tmp = f->formals;
-
 		}
 	}
+	f->local_count = 0;
 	return f;
 }
 
+// same with zard's
 Temp_label F_name(F_frame f)
 {
 	return f->name;
 }
 
+// same with zard's
 F_accessList F_formals(F_frame f)
 {
 	return f->formals;
 }
 
+// using escape allocLocal
 F_access F_allocLocal(F_frame f, bool escape)
 {
 	if (escape)
@@ -193,27 +206,31 @@ T_exp F_exp(F_access acc, T_exp framePtr)
 	}
 }
 
+// same with zard's
 T_exp F_externalCall(string str, T_expList args)
 {
 	return T_Call(T_Name(Temp_namedlabel(str)), args);
 }
 
+// same with zard's
 T_stm F_procEntryExit1(F_frame frame, T_stm stm)
 {
 	return stm;
 }
 
+// for liveness analysis
 static Temp_tempList returnSink = NULL;
 AS_instrList F_procEntryExit2(AS_instrList body)
 {
 	if (!returnSink)
 	{	
-		returnSink = Temp_TempList(F_RA(), NULL);
+		returnSink = Temp_TempList(F_RV(), NULL);
 	}
 	return AS_splice(body, AS_InstrList(AS_Oper("", NULL, returnSink, NULL), NULL));
 }
 
+// dummy func in textbook
 AS_proc F_procEntryExit3(F_frame frame, AS_instrList body)
 {
-	return AS_Proc("prolog", body, "epilog");
+	return AS_Proc("sw $fp, 0($sp)\nmove $fp, $sp\n", body, "move $sp, $fp\nld $fp, 0($sp)");
 }

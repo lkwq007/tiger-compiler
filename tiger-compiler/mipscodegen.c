@@ -7,10 +7,32 @@
 #include "temp.h"
 #include <assert.h>
 
+static void emit(AS_instr inst);
 static void munchStm(T_stm stm);
 static Temp_temp munchExp(T_exp expr);
-static Temp_tempList munchArgs(unsigned int n, T_expList eList,
-	F_accessList formals);
+static Temp_tempList munchArgs(unsigned int n, T_expList eList);
+
+static char *arg_reg[] = { "$a0", "$a1", "$a2", "$a3" };
+static Temp_tempList munchArgs(unsigned int n, T_expList eList)
+{
+	if (!eList)
+	{
+		return NULL;
+	}
+	Temp_tempList tlist = munchArgs(n + 1, eList->tail);
+	Temp_temp r = munchExp(eList->head);
+	emit(AS_Oper("addi $sp, $sp, -4\nsw `s0, 0($sp)\n # formal\n", NULL, Temp_TempList(r, NULL), NULL));
+	return Temp_TempList(r, tlist);
+}
+
+int remunchArgs(T_expList eList)
+{
+	if (!eList)
+	{
+		return 0;
+	}
+	return 1 + remunchArgs(eList->tail);
+}
 
 // emit the AS instrList
 static AS_instrList iList = NULL, last = NULL;
@@ -28,7 +50,7 @@ static void emit(AS_instr inst)
 
 static Temp_temp munchExp(T_exp e)
 {
-	char buf[100];
+	string buf = (string)checked_malloc(128);
 	switch (e->kind)
 	{
 	case T_MEM:
@@ -62,7 +84,7 @@ static Temp_temp munchExp(T_exp e)
 		}
 		if (mem->kind == T_CONST)
 		{
-			// MEM(CONST(i)
+			// MEM(CONST(i))
 			Temp_temp r = Temp_newtemp();
 			int offset = mem->u.CONST;
 			sprintf(buf, "lw `d0 %d($r0)\n", offset);
@@ -74,7 +96,7 @@ static Temp_temp munchExp(T_exp e)
 			// MEM(e1)
 			Temp_temp r = Temp_newtemp();
 			T_exp e1 = mem->u.MEM;
-			sprintf(buf, "lw 'd0, 0('s0)\n");
+			sprintf(buf, "lw `d0, 0(`s0)\n");
 			emit(AS_Oper(buf, Temp_TempList(r, NULL), Temp_TempList(munchExp(e1), NULL), NULL));
 			return r;
 		}
@@ -288,9 +310,16 @@ static Temp_temp munchExp(T_exp e)
 	case T_CALL:
 	{
 		// TODO: fix call
+		emit(AS_Oper("addi $sp, $sp, -4\nsw $ra, 0($sp)\n", NULL, NULL, NULL));
 		Temp_temp r=munchExp(e->u.CALL.fun);
-		//Temp_tempList list=munchArgs(0,e->u.CALL.args,F_formals(CODEGEN_frame));
+		Temp_tempList list=munchArgs(0,e->u.CALL.args);
 		//emit(AS_Oper("jal `s0\n", calldefs, Temp_TempList(r, list), NULL));
+		emit(AS_Oper("jal `s0\n", NULL, Temp_TempList(r, list), NULL));
+		int num = remunchArgs(e->u.CALL.args);
+		sprintf(buf, "addi $sp, $sp, %d\n", num*F_wordSize);
+		emit(AS_Oper(buf, NULL, NULL, NULL));
+		emit(AS_Oper("ld $ra, 0($sp)\naddi $sp, $sp, 4\n", NULL, NULL, NULL));
+		return F_RV();
 	}
 	default:
 	{
@@ -302,7 +331,7 @@ static Temp_temp munchExp(T_exp e)
 
 static void munchStm(T_stm s)
 {
-	char buf[100];
+	string buf = (string)checked_malloc(128);
 	switch (s->kind) {
 	case T_MOVE:
 	{
@@ -330,7 +359,7 @@ static void munchStm(T_stm s)
 				// MOVE(MEM(CONST(n)), e1)
 				T_exp e1=src;
 				int num = dst->u.MEM->u.CONST;
-				sprintf(buf, "sw 's0, %d", num);
+				sprintf(buf, "sw `s0, %d", num);
 				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), NULL), NULL));
 			}
 			else if (src->kind == T_MEM)
@@ -338,7 +367,7 @@ static void munchStm(T_stm s)
 				// TODO proper inst
 				// MOVE(MEM(e1), MEM(e2))
 				T_exp e1 = dst->u.MEM, e2 = src->u.MEM;
-				sprintf(buf, "lw $t0, 0('s1)\nsw $t0, 0('s1)\n");
+				sprintf(buf, "lw $t0, 0(`s1)\nsw $t0, 0(`s0)\n");
 				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 			else
@@ -352,8 +381,11 @@ static void munchStm(T_stm s)
 		else if (dst->kind == T_TEMP)
 		{
 			// MOVE(TEMP(e1), e2)
-			sprintf(buf, "move 'd0, 's0\n");
+			sprintf(buf, "move `d0, `s0\n");
 			emit(AS_Move(buf, Temp_TempList(munchExp(dst), NULL), Temp_TempList(munchExp(src), NULL)));
+			// TODO change to AS_move
+			// now not consider reg alloc
+			//emit(AS_Oper(buf, Temp_TempList(munchExp(dst), NULL), Temp_TempList(munchExp(src), NULL), NULL));
 		}
 		else
 		{
@@ -380,7 +412,7 @@ static void munchStm(T_stm s)
 		// TODO jump!
 		T_exp e = s->u.JUMP.exp;
 		Temp_labelList jumps = s->u.JUMP.jumps;
-		sprintf(buf, "j 'j0\n");
+		sprintf(buf, "j `j0\n");
 		emit(AS_Oper(buf, NULL, NULL, AS_Targets(jumps)));
 		break;
 	}
