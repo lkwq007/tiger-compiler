@@ -547,7 +547,7 @@ int charPos=1;
 static int commentDepth = 0;
 const int initSize = 10;
 static int curSize = 0;
-static curCap = initSize;
+static curCap = 10;
 char *str = NULL;
 
 int yywrap(void)

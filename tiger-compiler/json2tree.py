@@ -12,20 +12,26 @@ s = ''.join(s).replace(' ', '').replace('\n', '')
 data = json.loads(s)
 
 # Convert back to JSON & print to stderr so we can verfiy that the tree is correct.
-print(json.dumps(data, indent=4), file=sys.stderr)
+# print(json.dumps(data, indent=4), file=sys.stderr)
 
 # Extract tree edges from the dict
 edges = []
-
+i = 0
 def get_edges(treedict, parent=None):
-    name = next(iter(treedict.keys()))
-    if parent is not None:
-        edges.append((parent, name))
-    for item in treedict[name]["children"]:
-        if isinstance(item, dict):
-            get_edges(item, parent=name)
+    global i
+    for name in (treedict.keys()):
+        # print(name)
+        label = name
+        label+=str(i)
+        i+=1
+        if parent is not None:
+            edges.append((parent, label))
+        if isinstance(treedict[name], dict):
+            get_edges(treedict[name], parent=label)
+            # for item in treedict[name].keys():
+                # print(item)
         else:
-            edges.append((name, item))
+            edges.append((label, treedict[name]))
 
 get_edges(data)
 
