@@ -10,7 +10,7 @@
 #include "printtree.h"
 
  /* local function prototype */
-static void pr_tree_exp(FILE *out, T_exp exp, int d);
+static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int d);
 
 static void indent(FILE *out, int d) {
 	int i;
@@ -24,115 +24,110 @@ static char bin_oper[][12] = {
 static char rel_oper[][12] = {
   "EQ", "NE", "LT", "GT", "LE", "GE", "ULT", "ULE", "UGT", "UGE" };
 
-static void pr_stm(FILE *out, T_stm stm, int d)
+static unsigned int id = 0;
+
+static unsigned int pr_stm(FILE *out, T_stm stm, unsigned int pid)
 {
+	unsigned int uid = id;
+	id++;
+	fprintf(out, "n%x--n%x;\n", pid, uid);
 	switch (stm->kind) {
 	case T_SEQ:
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.SEQ.left);
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.SEQ.right);
-		fprintf(out, "n%x [label=\"SEQ\"];\n",stm);
-		pr_stm(out, stm->u.SEQ.left, d + 1);
-		pr_stm(out, stm->u.SEQ.right, d + 1);
+		fprintf(out, "n%x [label=\"SEQ\"];\n", uid);
+		pr_stm(out, stm->u.SEQ.left, uid);
+		pr_stm(out, stm->u.SEQ.right, uid);
 		break;
 	case T_LABEL:
-		fprintf(out, "n%x [label=\"LABEL %s\"];\n",stm, S_name(stm->u.LABEL));
+		fprintf(out, "n%x [label=\"LABEL %s\"];\n", uid, S_name(stm->u.LABEL));
 		break;
 	case T_JUMP:
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.JUMP.exp);
-		fprintf(out, "n%x [label=\"JUMP\"];\n", stm);
-		pr_tree_exp(out, stm->u.JUMP.exp, d + 1);
+		fprintf(out, "n%x [label=\"JUMP\"];\n", uid);
+		pr_tree_exp(out, stm->u.JUMP.exp, uid);
 		break;
 	case T_CJUMP:
-		fprintf(out, "n%x [label=\"CJUMP\"];\n", stm);
+		fprintf(out, "n%x [label=\"CJUMP\"];\n", uid);
 		// op
-		fprintf(out, "n%x--n%x;\n", stm, &(stm->u.CJUMP.op));
-		fprintf(out, "n%x [label=\"%s\"];\n", &(stm->u.CJUMP.op), rel_oper[stm->u.CJUMP.op]);
+		fprintf(out, "n%x--n%x;\n", uid, id);
+		fprintf(out, "n%x [label=\"%s\"];\n", id, rel_oper[stm->u.CJUMP.op]);
+		id++;
 		// t&f name
-		fprintf(out, "n%x--n%x;\n", stm, &(stm->u.CJUMP.true));
-		fprintf(out, "n%x [label=\"%s\"];\n", &(stm->u.CJUMP.true), S_name(stm->u.CJUMP.true));
-		fprintf(out, "n%x--n%x;\n", stm, &(stm->u.CJUMP.false));
-		fprintf(out, "n%x [label=\"%s\"];\n", &(stm->u.CJUMP.false), S_name(stm->u.CJUMP.false));
+		fprintf(out, "n%x--n%x;\n", uid, id);
+		fprintf(out, "n%x [label=\"%s\"];\n", id, S_name(stm->u.CJUMP.true));
+		id++;
+		fprintf(out, "n%x--n%x;\n", uid, id);
+		fprintf(out, "n%x [label=\"%s\"];\n", id, S_name(stm->u.CJUMP.false));
+		id++;
 		// left&right
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.CJUMP.left);
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.CJUMP.right);
-		pr_tree_exp(out, stm->u.CJUMP.left, d + 1);
-		pr_tree_exp(out, stm->u.CJUMP.right, d + 1);
+		pr_tree_exp(out, stm->u.CJUMP.left, uid);
+		pr_tree_exp(out, stm->u.CJUMP.right, uid);
 		break;
 	case T_MOVE:
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.MOVE.dst);
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.MOVE.src);
-		fprintf(out, "n%x [label=\"MOVE\"];\n", stm);
-		pr_tree_exp(out, stm->u.MOVE.dst, d + 1);
-		pr_tree_exp(out, stm->u.MOVE.src, d + 1);
+		fprintf(out, "n%x [label=\"MOVE\"];\n", uid);
+		pr_tree_exp(out, stm->u.MOVE.dst, uid);
+		pr_tree_exp(out, stm->u.MOVE.src, uid);
 		break;
 	case T_EXP:
-		fprintf(out, "n%x--n%x;\n", stm, stm->u.EXP);
-		fprintf(out, "n%x [label=\"EXP\"];\n", stm);
-		pr_tree_exp(out, stm->u.EXP, d + 1);
+		fprintf(out, "n%x [label=\"EXP\"];\n", uid);
+		pr_tree_exp(out, stm->u.EXP, uid);
 		break;
 	}
+	return uid;
 }
 
-static void pr_tree_exp(FILE *out, T_exp exp, int d)
+static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int pid)
 {
+	unsigned int uid = id;
+	id++;
+	fprintf(out, "n%x--n%x;\n", pid, uid);
 	switch (exp->kind) {
 	case T_BINOP:
-		fprintf(out, "n%x--n%x;\n", exp, &(exp->u.BINOP.op));
-		fprintf(out, "n%x [label=\"%s\"];\n", &(exp->u.BINOP.op), bin_oper[exp->u.BINOP.op]);
-		fprintf(out, "n%x--n%x;\n", exp, exp->u.BINOP.left);
-		fprintf(out, "n%x--n%x;\n", exp, exp->u.BINOP.right);
-		fprintf(out, "n%x [label=\"BINOP\"];\n", exp);
-		pr_tree_exp(out, exp->u.BINOP.left, d + 1);
-		pr_tree_exp(out, exp->u.BINOP.right, d + 1);
+		fprintf(out, "n%x--n%x;\n", uid, id);
+		fprintf(out, "n%x [label=\"%s\"];\n", id, bin_oper[exp->u.BINOP.op]);
+		id++;
+		fprintf(out, "n%x [label=\"BINOP\"];\n", uid);
+		pr_tree_exp(out, exp->u.BINOP.left, uid);
+		pr_tree_exp(out, exp->u.BINOP.right, uid);
 		break;
 	case T_MEM:
-		fprintf(out, "n%x--n%x;\n", exp, exp->u.MEM);
-		fprintf(out, "n%x [label=\"MEM\"];\n", exp);
-		pr_tree_exp(out, exp->u.MEM, d + 1);
+		fprintf(out, "n%x [label=\"MEM\"];\n", uid);
+		pr_tree_exp(out, exp->u.MEM, uid);
 		break;
 	case T_TEMP:
-		fprintf(out, "n%x [label=\"TEMP %s\"];\n", exp,Temp_look(Temp_name(), exp->u.TEMP));
+		fprintf(out, "n%x [label=\"TEMP %s\"];\n", uid, Temp_look(Temp_name(), exp->u.TEMP));
 		break;
 	case T_ESEQ:
-		fprintf(out, "n%x--n%x;\n", exp, exp->u.ESEQ.stm);
-		fprintf(out, "n%x--n%x;\n", exp, exp->u.ESEQ.exp);
-		fprintf(out, "n%x [label=\"ESEQ\"];\n", exp);
-		pr_stm(out, exp->u.ESEQ.stm, d + 1);
-		pr_tree_exp(out, exp->u.ESEQ.exp, d + 1);
+		fprintf(out, "n%x [label=\"ESEQ\"];\n", uid);
+		pr_stm(out, exp->u.ESEQ.stm, uid);
+		pr_tree_exp(out, exp->u.ESEQ.exp, uid);
 		break;
 	case T_NAME:
-		fprintf(out, "n%x [label=\"NAME %s\"];\n", exp, S_name(exp->u.NAME));
+		fprintf(out, "n%x [label=\"NAME %s\"];\n", uid, S_name(exp->u.NAME));
 		break;
 	case T_CONST:
-		fprintf(out, "n%x [label=\"CONST %d\"];\n", exp, exp->u.CONST);
+		fprintf(out, "n%x [label=\"CONST %d\"];\n", uid, exp->u.CONST);
 		break;
 	case T_CALL:
 	{
 		T_expList args = exp->u.CALL.args;
-	fprintf(out, "n%x [label=\"CALL\"];\n", exp);
-	fprintf(out, "n%x--n%x;\n", exp, exp->u.CALL.fun);
-	pr_tree_exp(out, exp->u.CALL.fun, d + 1);
-	for (; args; args = args->tail) {
-		fprintf(out, "n%x--n%x;\n", exp, args->head);
-		pr_tree_exp(out, args->head, d + 2);
-	}
-	break;
+		fprintf(out, "n%x [label=\"CALL\"];\n", uid);
+		pr_tree_exp(out, exp->u.CALL.fun, uid);
+		for (; args; args = args->tail) {
+			pr_tree_exp(out, args->head, uid);
+		}
+		break;
 	}
 	} /* end of switch */
+	return uid;
 }
 
 void printStmList(FILE *out, T_stmList stmList)
 {
-	if (stmList->head->kind == T_LABEL)
+	if (id == 0)
 	{
-		fprintf(out, "graph \"%s\" {\n", S_name(stmList->head->u.LABEL));
-	}
-	else
-	{
-		fprintf(out, "graph \"%x\" {\n", stmList);
+		fprintf(out, "graph \"\" {\nn0 [label=\"program\"]\n");
+		id++;
 	}
 	for (; stmList; stmList = stmList->tail) {
 		pr_stm(out, stmList->head, 0);
 	}
-	fprintf(out, "}\n");
 }
