@@ -141,7 +141,6 @@ IR Tree
        BINOP(TIMES,
         CONST 3,
         CONST 4)))))))
-
 ```
 
 ---
@@ -622,6 +621,14 @@ addi $sp, $sp, 4
 jr $ra
 #END L2
 ```
+
+
+
+### IR 树的可视化
+
+我们修改了课本提供的 `printtree` ，使其输出 `JSON` 格式而非格式化后的树。`JSON` 格式很容易被诸如 `d3.js`与 `networkX` 等工具导入成树结构，从而进行可视化。
+
+
 
 ### 使用说明
 
