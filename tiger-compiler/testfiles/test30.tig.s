@@ -21,7 +21,13 @@ addi $sp, $sp, 8
 ld $ra, 0($sp)
 addi $sp, $sp, 4
 move $x100, $v0
-move $v0, $x100
+li $x108, 4
+li $t0, 2
+mult $x108, $t0
+mflo $x107
+add $t0, $x100, $x107
+lw $x106 0($t0)
+move $v0, $x109
 j L0
 L0:
 

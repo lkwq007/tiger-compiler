@@ -679,12 +679,14 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			{
 				if (type->u.name.sym == temp->u.name.sym)
 				{
-					EM_error(d->pos, "Error type def loop in %s", type->u.name.sym);
+					EM_error(d->pos, "Error type def loop in %s", S_name(type->u.name.sym));
+					goto TYPE_err;
 					break;
 				}
 				type = type->u.name.ty;
 			}
 		}
+TYPE_err:
 		return NULL;
 		break;
 	}

@@ -269,12 +269,11 @@ Tr_exp Tr_relExp(int op, Tr_exp left, Tr_exp right) {
 	return Tr_Cx(trues, falses, cond);
 }
 Tr_exp Tr_stringRelExp(int op, Tr_exp left, Tr_exp right) {
-	return Tr_Ex(F_externalCall("stringCompare", T_ExpList(unEx(left), T_ExpList(unEx(right), NULL))));
+	return Tr_Ex(T_Eseq(T_Exp(F_externalCall("stringCompare", T_ExpList(unEx(left), T_ExpList(unEx(right), NULL)))), T_Temp(F_RV())));
 }
 Tr_exp Tr_recordExp(Tr_expList fields, int size) {
 	Temp_temp r = Temp_newtemp();
-	T_stm alloc = T_Move(T_Temp(r),
-		F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL)));
+	T_stm alloc = T_Move(T_Temp(r),T_Eseq(T_Exp(F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL))), T_Temp(F_RV())));
 	T_stm seq = T_Exp(T_Const(0));
 	for (int i = size - 1; fields; fields = fields->tail, i--)
 	{
@@ -283,8 +282,8 @@ Tr_exp Tr_recordExp(Tr_expList fields, int size) {
 	return Tr_Ex(T_Eseq(T_Seq(alloc, seq), T_Temp(r)));
 }
 Tr_exp Tr_arrayExp(Tr_exp size, Tr_exp init) {
-	return Tr_Ex(F_externalCall(String("initArray"),
-		T_ExpList(unEx(size), T_ExpList(unEx(init), NULL))));
+	return Tr_Ex(T_Eseq(T_Exp(F_externalCall(String("initArray"),
+		T_ExpList(unEx(size), T_ExpList(unEx(init), NULL)))), T_Temp(F_RV())));
 }
 Tr_exp Tr_seqExp(Tr_expList stmts) {
 	return Tr_Ex(Tr_expListConversion(stmts));
@@ -374,6 +373,7 @@ Tr_exp Tr_forExp(Tr_access access,
 	T_stm mv = T_Move(index, unEx(low));
 	T_stm incre = T_Move(index, T_Binop(T_plus, index, T_Const(1)));
 	body_nx = T_Seq(body_nx, incre);
+	//return Tr_Ex(T_Const(999));
 	// return Tr_noExp();
 	// todo need fix
 	//return Tr_Ex(T_Eseq(mv, 
@@ -388,7 +388,7 @@ Tr_exp Tr_forExp(Tr_access access,
 			T_Eseq(T_Label(start), 
 				T_Eseq(body_nx, 
 					T_Eseq(T_Label(test), 
-						T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), 
+						T_Eseq(cond,
 							T_Eseq(T_Label(end), T_Const(0)))))))));
 
 }
@@ -421,7 +421,11 @@ Tr_exp Tr_fieldVar(Tr_exp record, int index) {
 	return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(record), T_Const(index * F_wordSize))));
 }
 Tr_exp Tr_subscriptVar(Tr_exp array, Tr_exp index) {
-	return Tr_Ex(T_Mem(T_Binop(T_plus, unEx(array), T_Binop(T_mul, unEx(index), T_Const(F_wordSize)))));
+	//return Tr_Ex(T_Const(233));
+	return Tr_Ex(
+		T_Mem(
+			T_Binop(T_plus, unEx(array),
+				T_Binop(T_mul, unEx(index), T_Const(F_wordSize)))));
 }
 Tr_exp Tr_noExp() {
 	return Tr_Ex(T_Const(0));

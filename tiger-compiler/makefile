@@ -9,7 +9,11 @@ CFLAGS=-I$(IDIR) -Wall -g -c -o
 OPTIONS=-o
 
 SEM_OBJECTS = test_semantic.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o \
+<<<<<<< HEAD
 	table.o prabsyn.o env.o semant.o types.o temp.o translate.o tree.o assem.o printjson.o mipsframe.o
+=======
+	table.o prabsyn.o env.o semant.o types.o temp.o translate.o mipsframe.o tree.o assem.o printtree.o
+>>>>>>> edb9181c9f7e672c9c6bf0b33fe429c534b29dcd
 PARSE_OBJECTS= parse_test.o parse.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o \
 	table.o prabsyn.o
 ASSEM_OBJECTS = main.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o parse.o \

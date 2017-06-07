@@ -2,6 +2,10 @@
 
 [TOC]
 
+Lnyan: https://github.com/lkwq007
+
+Zardinality: https://github.com/Zardinality
+
 ### 词法分析
 
 我们使用 flex 进行词法分析。
@@ -26,15 +30,19 @@
 
 文法描述详见 `tiger.y`。
 
-yacc 在分析整个文档的同时，建立好了一个其数据结构定义在`absyn.h`中的抽象语法树，其根节点为 `absyn_root ` 。`absyn.h`包括`A_SimpleVar`, `A_FieldVar`, `A_CallExp`等以 `A_` 开头的函数，用来构造 `A_var_`, `A_exp_`, `A_dec_`, `A_ty_`等数据结构，作为树的节点。
+yacc 在分析整个文档的同时，建立好了一个其数据结构定义在`absyn`中的抽象语法树，其根节点为 `absyn_root ` 。`absyn.h`包括`A_SimpleVar`, `A_FieldVar`, `A_CallExp`等以 `A_` 开头的函数，用来构造 `A_var_`, `A_exp_`, `A_dec_`, `A_ty_`等数据结构，作为树的节点。
 
 
 
 ### 中间代码
 
-`absyn_root `随后被`semant.h` 模块利用，完成对抽象语法树到中间表示树的翻译。`semant.h` 有四个接口函数，分别为：`transVar`, `transExp`, `transDec`, `transTy` ，分别负责对变量，表达式，声明，类型的翻译。但 `semant.h`不直接对 IR 树进行操作，而是通过 `translate.h`进行局部的翻译。在翻译的过程中，`translate.h`还会调用 `frame.h` `symbol.h` `temp.h`中的成员，用来维护栈帧、分配内存与寄存器，维护符号表，生成临时标号和变量。
+`absyn_root `随后被 `escape` 模块遍历，完成对抽象语法树中变量逃逸情况的分析。`escape` 有四个接口函数，分别为：`traverseVar`, `traverseExp`, `traverseDec`，分别负责对变量，表达式，声明进行遍历，分析其中的逃逸变量。
 
-`translate.h`生成的片段列表存放在 `fraglist`中，当中间树翻译完毕，可以遍历这个 List ，并调用 `printtree.h` 中的 `printStmList` 来进行中间树的可视化。下面是几个样例：
+`absyn_root `随后被 `semant` 模块利用，完成对抽象语法树到中间表示树的翻译。`semant` 有四个接口函数，分别为：`transVar`, `transExp`, `transDec`, `transTy` ，分别负责对变量，表达式，声明，类型的翻译。但 `semant.h`不直接对 IR 树进行操作，而是通过 `translate`进行局部的翻译。在翻译的过程中，`translate`还会调用 `frame` `symbol` `temp` `env` 中的成员，用来维护栈帧、分配内存与寄存器，维护符号表，生成临时标号和变量。
+
+`translate`生成的片段列表存放在 `fraglist`中，当中间树翻译完毕，可以遍历这个 List ，并调用 `printtree` 中的 `printStmList` 来进行中间树的可视化。下面是几个样例：
+
+---
 
 Tiger
 
@@ -49,16 +57,94 @@ end
 IR Tree
 
 ```
+ LABEL main
  EXP(
   ESEQ(
    EXP(
     ESEQ(
      MOVE(
-      TEMP t101,
+      TEMP t$x100,
       CONST 1),
      CONST 0)),
-   TEMP t101))
+   TEMP t$x100))
 ```
+
+---
+
+Tiger
+
+```
+/* array record */
+let
+	type test={a:int}
+    var arr1:=test{a=5}
+    type intArray = array of int
+    var b:= intArray [20] of 0
+in
+    arr1.a;b[3]
+end
+```
+
+IR Tree
+
+```
+ LABEL main
+ EXP(
+  ESEQ(
+   EXP(
+    ESEQ(
+     MOVE(
+      TEMP t$x100,
+      ESEQ(
+       SEQ(
+        MOVE(
+         TEMP t$x101,
+         ESEQ(
+          EXP(
+           CALL(
+            NAME initRecord,
+             CONST 4)),
+          TEMP t$v0)),
+        SEQ(
+         MOVE(
+          MEM(
+           BINOP(PLUS,
+            TEMP t$x101,
+            CONST 0)),
+          CONST 5),
+         EXP(
+          CONST 0))),
+       TEMP t$x101)),
+     CONST 0)),
+   ESEQ(
+    EXP(
+     ESEQ(
+      MOVE(
+       TEMP t$x104,
+       ESEQ(
+        EXP(
+         CALL(
+          NAME initArray,
+           CONST 20,
+           CONST 0)),
+        TEMP t$v0)),
+      CONST 0)),
+    ESEQ(
+     EXP(
+      MEM(
+       BINOP(PLUS,
+        TEMP t$x100,
+        CONST 0))),
+     MEM(
+      BINOP(PLUS,
+       TEMP t$x104,
+       BINOP(TIMES,
+        CONST 3,
+        CONST 4)))))))
+
+```
+
+---
 
 Tiger
 
@@ -74,660 +160,239 @@ end
 IR Tree
 
 ```
-  LABEL L1
- EXP(
+ LABEL L0
+ MOVE(
+  TEMP t$v0,
   ESEQ(
    CJUMP(EQ,
     ESEQ(
      MOVE(
-      TEMP t102,
+      TEMP t$x100,
       CONST 1),
      ESEQ(
       CJUMP(GT,
        CONST 10,
        CONST 20,
-       L2,L3),
+       L1,L2),
       ESEQ(
-       LABEL L3,
+       LABEL L2,
        ESEQ(
         MOVE(
-         TEMP t102,
+         TEMP t$x100,
          CONST 0),
         ESEQ(
-         LABEL L2,
-         TEMP t102))))),
+         LABEL L1,
+         TEMP t$x100))))),
     CONST 0,
-    L5,L4),
+    L4,L3),
    ESEQ(
-    LABEL L4,
+    LABEL L3,
     ESEQ(
      MOVE(
       MEM(
-       TEMP t103),
+       TEMP t$x101),
       CONST 30),
      ESEQ(
       JUMP(
-       NAME L6),
+       NAME L5),
       ESEQ(
-       LABEL L5,
+       LABEL L4,
        ESEQ(
         MOVE(
          MEM(
-          TEMP t103),
+          TEMP t$x101),
          CONST 40),
         ESEQ(
          JUMP(
-          NAME L6),
+          NAME L5),
          ESEQ(
-          LABEL L6,
-          TEMP t103)))))))))
+          LABEL L5,
+          TEMP t$x101)))))))))
+ LABEL main
  EXP(
-  ESEQ(
-   EXP(
-    CONST 0),
-   CONST 0))
+  CONST 0)
+
 ```
+
+---
 
 Tiger
 
 ```
-/* define valid mutually recursive procedures */
+/* define valid mutually recursive procedures & for */
 let
 
 function do_nothing1(a: int, b: string)=
-		do_nothing2(a+1)
+        do_nothing2(a+1)
 
 function do_nothing2(d: int) =
-		do_nothing1(d, "str")
+        do_nothing1(d, "str")
 
 in
-	do_nothing1(0, "str2")
+    do_nothing1(0, "str2");for i:=1 to 2 do
+    flush()
 end
 ```
 
 IR Tree
 
 ```
- LABEL L1
- EXP(
-  CALL(
-   NAME L2,
-    BINOP(PLUS,
-     TEMP t103,
-     CONST 1)))
- LABEL L2
- EXP(
+ LABEL L0
+ MOVE(
+  TEMP t$v0,
   CALL(
    NAME L1,
-    NAME L3))
+    BINOP(PLUS,
+     MEM(
+      BINOP(PLUS,
+       TEMP t$fp,
+       CONST 8)),
+     CONST 1)))
+ LABEL L1
+ MOVE(
+  TEMP t$v0,
+  CALL(
+   NAME L0,
+    MEM(
+     BINOP(PLUS,
+      TEMP t$fp,
+      CONST 4)),
+    NAME L2))
+ LABEL main
  EXP(
   ESEQ(
    EXP(
-    CONST 0),
-   CALL(
-    NAME L1,
-     NAME L4)))
+    CALL(
+     NAME L0,
+      CONST 0,
+      NAME L3)),
+   ESEQ(
+    MOVE(
+     MEM(
+      BINOP(PLUS,
+       TEMP t$fp,
+       CONST -4)),
+     CONST 1),
+    ESEQ(
+     JUMP(
+      NAME L6),
+     ESEQ(
+      LABEL L5,
+      ESEQ(
+       SEQ(
+        EXP(
+         CALL(
+          NAME flush)),
+        MOVE(
+         MEM(
+          BINOP(PLUS,
+           TEMP t$fp,
+           CONST -4)),
+         BINOP(PLUS,
+          MEM(
+           BINOP(PLUS,
+            TEMP t$fp,
+            CONST -4)),
+          CONST 1))),
+       ESEQ(
+        LABEL L6,
+        ESEQ(
+         CJUMP(LE,
+          MEM(
+           BINOP(PLUS,
+            TEMP t$fp,
+            CONST -4)),
+          CONST 2,
+          L5,L4),
+         ESEQ(
+          LABEL L4,
+          CONST 0)))))))))
+
 ```
+
+---
 
 Tiger
 
 ```
-let 
+/* static link */
+let
 
- type any = {any : int}
- var buffer := getchar()
+function do_nothing1(a: int, b: string):int=(
+let function dox(x:int):int=a+x in dox(5) end;
+do_nothing2(a+1);0
+)
 
-function readint(any: any) : int =
- let var i := 0
-     function isdigit(s : string) : int = 
-		  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
-     function skipto() =
-       while buffer=" " | buffer="\n"
-         do buffer := getchar()
-  in skipto();
-     any.any := isdigit(buffer);
-     while isdigit(buffer)
-       do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
-     i
- end
+function do_nothing2(d: int):string =
+        (do_nothing1(d, "str");" ")
 
- type list = {first: int, rest: list}
-
- function readlist() : list =
-    let var any := any{any=0}
-        var i := readint(any)
-     in if any.any
-         then list{first=i,rest=readlist()}
-         else nil
-    end
-
- function merge(a: list, b: list) : list =
-   if a=nil then b
-   else if b=nil then a
-   else if a.first < b.first 
-      then list{first=a.first,rest=merge(a.rest,b)}
-      else list{first=b.first,rest=merge(a,b.rest)}
-
- function printint(i: int) =
-  let function f(i:int) = if i>0 
-	     then (f(i/10); print(chr(i-i/10*10+ord("0"))))
-   in if i<0 then (print("-"); f(-i))
-      else if i>0 then f(i)
-      else print("0")
-  end
-
- function printlist(l: list) =
-   if l=nil then print("\n")
-   else (printint(l.first); print(" "); printlist(l.rest))
-
-   var list1 := readlist()
-   var list2 := (buffer:=getchar(); readlist())
-
-
-  /* BODY OF MAIN PROGRAM */
- in printlist(merge(list1,list2))
+in
+    do_nothing1(0, "str2")
 end
+
+
 ```
 
 IR Tree
 
 ```
-  LABEL L2
- EXP(
-  ESEQ(
-   CJUMP(GE,
-    CALL(
-     NAME ord,
-      TEMP t101),
-    CALL(
-     NAME ord,
-      NAME L4),
-    L6,L7),
-   ESEQ(
-    LABEL L6,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t109),
-      ESEQ(
-       MOVE(
-        TEMP t110,
-        CONST 1),
-       ESEQ(
-        CJUMP(LE,
-         CALL(
-          NAME ord,
-           TEMP t101),
-         CALL(
-          NAME ord,
-           NAME L5),
-         L9,L10),
-        ESEQ(
-         LABEL L10,
-         ESEQ(
-          MOVE(
-           TEMP t110,
-           CONST 0),
-          ESEQ(
-           LABEL L9,
-           TEMP t110)))))),
-     ESEQ(
-      JUMP(
-       NAME L8),
-      ESEQ(
-       LABEL L7,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t109),
-         CONST 0),
-        ESEQ(
-         JUMP(
-          NAME L8),
-         ESEQ(
-          LABEL L8,
-          TEMP t109)))))))))
- LABEL L3
- EXP(
-  ESEQ(
-   JUMP(
-    NAME L17),
-   ESEQ(
-    LABEL L18,
-    ESEQ(
-     MOVE(
-      TEMP t101,
-      CALL(
-       NAME getchar)),
-     ESEQ(
-      LABEL L17,
-      ESEQ(
-       CJUMP(EQ,
-        ESEQ(
-         CJUMP(EQ,
-          CALL(
-           NAME stringCompare,
-            TEMP t101,
-            NAME L12),
-          CONST 0,
-          L15,L14),
-         ESEQ(
-          LABEL L14,
-          ESEQ(
-           MOVE(
-            MEM(
-             TEMP t111),
-            CONST 1),
-           ESEQ(
-            JUMP(
-             NAME L16),
-            ESEQ(
-             LABEL L15,
-             ESEQ(
-              MOVE(
-               MEM(
-                TEMP t111),
-               CALL(
-                NAME stringCompare,
-                 TEMP t101,
-                 NAME L13)),
-              ESEQ(
-               JUMP(
-                NAME L16),
-               ESEQ(
-                LABEL L16,
-                TEMP t111)))))))),
-        CONST 0,
-        L11,L18),
-       ESEQ(
-        LABEL L11,
-        CONST 0)))))))
- LABEL L1
- EXP(
-  ESEQ(
-   EXP(
-    CONST 0),
-   TEMP t105))
- LABEL L23
- EXP(
-  ESEQ(
-   EXP(
-    ESEQ(
-     MOVE(
-      TEMP t122,
-      CALL(
-       NAME L1,
-        TEMP t120)),
-     CONST 0)),
-   ESEQ(
-    CJUMP(EQ,
+ LABEL L2
+ MOVE(
+  TEMP t$v0,
+  BINOP(PLUS,
+   MEM(
+    BINOP(PLUS,
      MEM(
       BINOP(PLUS,
-       TEMP t120,
+       TEMP t$fp,
        CONST 0)),
-     CONST 0,
-     L28,L27),
-    ESEQ(
-     LABEL L27,
-     ESEQ(
-      MOVE(
-       MEM(
-        TEMP t124),
-       ESEQ(
-        SEQ(
-         MOVE(
-          TEMP t123,
-          CALL(
-           NAME initRecord,
-            CONST 16)),
-         SEQ(
-          MOVE(
-           MEM(
-            BINOP(PLUS,
-             TEMP t123,
-             CONST 0)),
-           CALL(
-            NAME L23)),
-          SEQ(
-           MOVE(
-            MEM(
-             BINOP(PLUS,
-              TEMP t123,
-              CONST 8)),
-            TEMP t122),
-           EXP(
-            CONST 0)))),
-        TEMP t123)),
-      ESEQ(
-       JUMP(
-        NAME L29),
-       ESEQ(
-        LABEL L28,
-        ESEQ(
-         MOVE(
-          MEM(
-           TEMP t124),
-          CONST 0),
-         ESEQ(
-          JUMP(
-           NAME L29),
-          ESEQ(
-           LABEL L29,
-           TEMP t124))))))))))
- LABEL L24
- EXP(
-  ESEQ(
-   CJUMP(EQ,
-    TEMP t115,
-    CONST 0,
-    L36,L37),
-   ESEQ(
-    LABEL L36,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t129),
-      TEMP t114),
-     ESEQ(
-      JUMP(
-       NAME L38),
-      ESEQ(
-       LABEL L37,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t129),
-         ESEQ(
-          CJUMP(EQ,
-           TEMP t114,
-           CONST 0,
-           L33,L34),
-          ESEQ(
-           LABEL L33,
-           ESEQ(
-            MOVE(
-             MEM(
-              TEMP t128),
-             TEMP t115),
-            ESEQ(
-             JUMP(
-              NAME L35),
-             ESEQ(
-              LABEL L34,
-              ESEQ(
-               MOVE(
-                MEM(
-                 TEMP t128),
-                ESEQ(
-                 CJUMP(LT,
-                  MEM(
-                   BINOP(PLUS,
-                    TEMP t115,
-                    CONST 0)),
-                  MEM(
-                   BINOP(PLUS,
-                    TEMP t114,
-                    CONST 0)),
-                  L30,L31),
-                 ESEQ(
-                  LABEL L30,
-                  ESEQ(
-                   MOVE(
-                    MEM(
-                     TEMP t127),
-                    ESEQ(
-                     SEQ(
-                      MOVE(
-                       TEMP t125,
-                       CALL(
-                        NAME initRecord,
-                         CONST 16)),
-                      SEQ(
-                       MOVE(
-                        MEM(
-                         BINOP(PLUS,
-                          TEMP t125,
-                          CONST 0)),
-                        CALL(
-                         NAME L24,
-                          TEMP t114)),
-                       SEQ(
-                        MOVE(
-                         MEM(
-                          BINOP(PLUS,
-                           TEMP t125,
-                           CONST 8)),
-                         MEM(
-                          BINOP(PLUS,
-                           TEMP t115,
-                           CONST 0))),
-                        EXP(
-                         CONST 0)))),
-                     TEMP t125)),
-                   ESEQ(
-                    JUMP(
-                     NAME L32),
-                    ESEQ(
-                     LABEL L31,
-                     ESEQ(
-                      MOVE(
-                       MEM(
-                        TEMP t127),
-                       ESEQ(
-                        SEQ(
-                         MOVE(
-                          TEMP t126,
-                          CALL(
-                           NAME initRecord,
-                            CONST 16)),
-                         SEQ(
-                          MOVE(
-                           MEM(
-                            BINOP(PLUS,
-                             TEMP t126,
-                             CONST 0)),
-                           CALL(
-                            NAME L24,
-                             MEM(
-                              BINOP(PLUS,
-                               TEMP t114,
-                               CONST 8)))),
-                          SEQ(
-                           MOVE(
-                            MEM(
-                             BINOP(PLUS,
-                              TEMP t126,
-                              CONST 8)),
-                            MEM(
-                             BINOP(PLUS,
-                              TEMP t114,
-                              CONST 0))),
-                           EXP(
-                            CONST 0)))),
-                        TEMP t126)),
-                      ESEQ(
-                       JUMP(
-                        NAME L32),
-                       ESEQ(
-                        LABEL L32,
-                        TEMP t127))))))))),
-               ESEQ(
-                JUMP(
-                 NAME L35),
-                ESEQ(
-                 LABEL L35,
-                 TEMP t128))))))))),
-        ESEQ(
-         JUMP(
-          NAME L38),
-         ESEQ(
-          LABEL L38,
-          TEMP t129)))))))))
- LABEL L39
- EXP(
-  ESEQ(
-   CJUMP(GT,
-    TEMP t131,
-    CONST 0,
-    L41,L42),
-   ESEQ(
-    LABEL L41,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t132),
-      CALL(
-       NAME print,
-        CALL(
-         NAME chr,
-          BINOP(PLUS,
-           BINOP(MINUS,
-            TEMP t131,
-            BINOP(TIMES,
-             BINOP(DIVIDE,
-              TEMP t131,
-              CONST 10),
-             CONST 10)),
-           CALL(
-            NAME ord,
-             NAME L40))))),
-     ESEQ(
-      JUMP(
-       NAME L43),
-      ESEQ(
-       LABEL L42,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t132),
-         CONST 0),
-        ESEQ(
-         JUMP(
-          NAME L43),
-         ESEQ(
-          LABEL L43,
-          TEMP t132)))))))))
- LABEL L25
- EXP(
+     CONST 8)),
+   MEM(
+    BINOP(PLUS,
+     TEMP t$fp,
+     CONST 4))))
+ LABEL L0
+ MOVE(
+  TEMP t$v0,
   ESEQ(
    EXP(
-    CONST 0),
+    CALL(
+     NAME L2,
+      CONST 5)),
    ESEQ(
-    CJUMP(LT,
-     TEMP t117,
-     CONST 0,
-     L49,L50),
-    ESEQ(
-     LABEL L49,
-     ESEQ(
-      MOVE(
-       MEM(
-        TEMP t134),
-       CALL(
-        NAME L39,
-         BINOP(MINUS,
-          CONST 0,
-          TEMP t117))),
-      ESEQ(
-       JUMP(
-        NAME L51),
-       ESEQ(
-        LABEL L50,
-        ESEQ(
-         MOVE(
-          MEM(
-           TEMP t134),
-          ESEQ(
-           CJUMP(GT,
-            TEMP t117,
-            CONST 0,
-            L46,L47),
-           ESEQ(
-            LABEL L46,
-            ESEQ(
-             MOVE(
-              MEM(
-               TEMP t133),
-              CALL(
-               NAME L39,
-                TEMP t117)),
-             ESEQ(
-              JUMP(
-               NAME L48),
-              ESEQ(
-               LABEL L47,
-               ESEQ(
-                MOVE(
-                 MEM(
-                  TEMP t133),
-                 CALL(
-                  NAME print,
-                   NAME L45)),
-                ESEQ(
-                 JUMP(
-                  NAME L48),
-                 ESEQ(
-                  LABEL L48,
-                  TEMP t133))))))))),
-         ESEQ(
-          JUMP(
-           NAME L51),
-          ESEQ(
-           LABEL L51,
-           TEMP t134))))))))))
- LABEL L26
- EXP(
-  ESEQ(
-   CJUMP(EQ,
-    TEMP t119,
-    CONST 0,
-    L54,L55),
-   ESEQ(
-    LABEL L54,
-    ESEQ(
-     MOVE(
-      MEM(
-       TEMP t135),
-      CALL(
-       NAME print,
-        NAME L52)),
-     ESEQ(
-      JUMP(
-       NAME L56),
-      ESEQ(
-       LABEL L55,
-       ESEQ(
-        MOVE(
-         MEM(
-          TEMP t135),
-         CALL(
-          NAME L26,
-           MEM(
-            BINOP(PLUS,
-             TEMP t119,
-             CONST 8)))),
-        ESEQ(
-         JUMP(
-          NAME L56),
-         ESEQ(
-          LABEL L56,
-          TEMP t135)))))))))
- EXP(
-  ESEQ(
-   EXP(
-    ESEQ(
-     MOVE(
-      TEMP t137,
-      CALL(
-       NAME L23)),
-     CONST 0)),
-   CALL(
-    NAME L26,
+    EXP(
      CALL(
-      NAME L24,
-       TEMP t137))))
+      NAME L1,
+       BINOP(PLUS,
+        MEM(
+         BINOP(PLUS,
+          TEMP t$fp,
+          CONST 8)),
+        CONST 1))),
+    CONST 0)))
+ LABEL L1
+ MOVE(
+  TEMP t$v0,
+  ESEQ(
+   EXP(
+    CALL(
+     NAME L0,
+      MEM(
+       BINOP(PLUS,
+        TEMP t$fp,
+        CONST 4)),
+      NAME L3)),
+   NAME L4))
+ LABEL main
+ EXP(
+  CALL(
+   NAME L0,
+    CONST 0,
+    NAME L5))
 
 ```
+
+---
 
 Tiger
 
@@ -743,18 +408,20 @@ type d=a
 in
  ""
 end
-
 ```
 
 Error
 
 ```
-test6.tig:4.8: Undefined nameTy c
-test6.tig:6.8: Undefined nameTy d
+test.tig:9.1: Error type def loop in a
 ```
-### 汇编生成
+### 伪汇编生成
 
-当通过 `semant.h `将抽象语法树转换成 IR 树之后，`canon.h`提供了可以将 IR 树进行标准化的函数 `C_linearize`，它将上一步的 IR 树中的 `ESEQ` 与`CALL`节点消除，`canon.h`还提供了 `C_basicBlocks` 与`C_traceSchedule`，可以进一步地得到该 IR 树的基本块与轨迹。最后 `mipscodegen.h`提供的 `F_codegen` 利用 `maximal munch`算法对 IR 树进行覆盖，进而生成 mips 汇编代码。下面是几个样例：
+当通过 `semant` 将抽象语法树转换成 IR 树之后，`canon`提供了可以将 IR 树进行标准化的函数 `C_linearize`，它将上一步的 IR 树中的 `ESEQ` 与`CALL`节点消除，`canon.h`还提供了 `C_basicBlocks` 与`C_traceSchedule`，可以进一步地得到该 IR 树的基本块与轨迹。最后 `mipscodegen`提供的 `F_codegen` 利用 `maximal munch`算法对 IR 树进行覆盖，进而生成 mips 汇编代码。
+
+在这里由于没有进行寄存器分配，部分指令的用法可能存在问题，因此称为伪汇编代码。
+
+下面是几个样例：
 
 Tiger
 
@@ -770,7 +437,7 @@ in
 end
 ```
 
-mipsAssembly
+MIPS
 
 ```
 .data
@@ -788,12 +455,10 @@ addi $sp, $sp, -4
 sw $ra, 0($sp)
 li $x104, 0
 addi $sp, $sp, -4
-sw $x104, 0($sp)
- # formal
+sw $x104, 0($sp) # formal
 li $x105, 10
 addi $sp, $sp, -4
-sw $x105, 0($sp)
- # formal
+sw $x105, 0($sp) # formal
 jal initArray
 addi $sp, $sp, 8
 ld $ra, 0($sp)
@@ -802,8 +467,7 @@ move $x100, $v0
 addi $sp, $sp, -4
 sw $ra, 0($sp)
 addi $sp, $sp, -4
-sw L0, 0($sp)
- # formal
+sw L0, 0($sp) # formal
 jal print
 addi $sp, $sp, 4
 ld $ra, 0($sp)
@@ -817,30 +481,146 @@ ld $fp, 0($sp)
 addi $sp, $sp, 4
 jr $ra
 #END main
-
-
 ```
 
 Tiger
 
 ```
-/* error: mutually recursive types thet do not pass through record or array */
-let 
+/* define valid mutually recursive functions */
+let
 
-type a=c
-type b=a
-type c=d
-type d=a
+function do_nothing1(a: int, b: string):int=(
+let function dox(x:int):int=a+x in dox(5) end;
+do_nothing2(a+1);0
+)
+
+function do_nothing2(d: int):string =
+        (do_nothing1(d, "str");" ")
 
 in
- ""
+    do_nothing1(0, "str2")
 end
 ```
 
-Error
+MIPS
 
 ```
-./testfiles/test16.tig:9.2: Error type def loop in �
+.data
+L5: .asciiz "str2"
+L4: .asciiz " "
+L3: .asciiz "str"
+
+.text
+.global main
+main: #BEGIN main
+addi $sp, $sp, -4
+sw $fp, 0($sp)
+move $fp, $sp
+addi $sp, $sp, -10240
+L7:
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+addi $sp, $sp, -4
+sw L5, 0($sp) # formal
+li $x104, 0
+addi $sp, $sp, -4
+sw $x104, 0($sp) # formal
+jal L0
+addi $sp, $sp, 8
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+move $v0, $v0
+j L6
+L6:
+
+move $sp, $fp
+ld $fp, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+#END main
+
+L1: #BEGIN L1
+addi $sp, $sp, -4
+sw $fp, 0($sp)
+move $fp, $sp
+addi $sp, $sp, -10240
+L9:
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+addi $sp, $sp, -4
+sw L3, 0($sp) # formal
+lw $x107 4($fp)
+addi $sp, $sp, -4
+sw $x107, 0($sp) # formal
+jal L0
+addi $sp, $sp, 8
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+move $v0, L4
+j L8
+L8:
+
+move $sp, $fp
+ld $fp, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+#END L1
+
+L0: #BEGIN L0
+addi $sp, $sp, -4
+sw $fp, 0($sp)
+move $fp, $sp
+addi $sp, $sp, -10240
+L11:
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+li $x110, 5
+addi $sp, $sp, -4
+sw $x110, 0($sp) # formal
+jal L2
+addi $sp, $sp, 4
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+addi $sp, $sp, -4
+sw $ra, 0($sp)
+lw $x113 8($fp)
+addi $x112, $x113, 1
+addi $sp, $sp, -4
+sw $x112, 0($sp) # formal
+jal L1
+addi $sp, $sp, 4
+ld $ra, 0($sp)
+addi $sp, $sp, 4
+li $x114, 0
+move $v0, $x114
+j L10
+L10:
+
+move $sp, $fp
+ld $fp, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+#END L0
+
+L2: #BEGIN L2
+addi $sp, $sp, -4
+sw $fp, 0($sp)
+move $fp, $sp
+addi $sp, $sp, -10240
+L13:
+lw $x116 4($fp)
+lw $x118 0($fp)
+lw $x117 8($x118)
+add $x115, $x117, $x116
+move $v0, $x115
+j L12
+L12:
+
+move $sp, $fp
+ld $fp, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+#END L2
 ```
 
 ### 使用说明
@@ -849,3 +629,4 @@ Error
 2. `make $(the test u want to conduct)` ，`the test u want to conduct`包括 `parsetest` `semantest` `assemtest`，分别对应 生成抽象语法树，生成 IR 树， 生成 mips 汇编。
 3. `./bin/$(the program generated) ./testfiles/$(the testfile u want to use)`注意，对于 `parsetest`与`semantest`，生成树将直接被打印在 terminal 的窗口，你可以手动在命令后加上`>$(output file)`将其输出到文件。对于 `assemtest`，汇编代码将被生成在 `./testfiles`目录，文件名与测试文件相同，扩展名为 `.s`。
 4. 当你修改过代码之后，可以先进行 `make clean` ，然后回到第二步。
+5. 或者也可以直接运行 `./test.sh` 对所有的测试文件进行测试，对应的结果生成在 `./testfiles` 目录下。

@@ -21,7 +21,7 @@ static Temp_tempList munchArgs(unsigned int n, T_expList eList)
 	}
 	Temp_tempList tlist = munchArgs(n + 1, eList->tail);
 	Temp_temp r = munchExp(eList->head);
-	emit(AS_Oper("addi $sp, $sp, -4\nsw `s0, 0($sp)\n # formal\n", NULL, Temp_TempList(r, NULL), NULL));
+	emit(AS_Oper("addi $sp, $sp, -4\nsw `s0, 0($sp) # formal\n", NULL, Temp_TempList(r, NULL), NULL));
 	return Temp_TempList(r, tlist);
 }
 
@@ -79,7 +79,10 @@ static Temp_temp munchExp(T_exp e)
 			}
 			else
 			{
-				assert(0);
+				T_exp e1 = mem->u.BINOP.left;
+				T_exp e2 = mem->u.BINOP.right;
+				sprintf(buf, "add $t0, `s0, `s1\nlw `d0 0($t0)\n");
+				emit(AS_Oper(buf, Temp_TempList(r, NULL), Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2),NULL)), NULL));
 			}
 		}
 		if (mem->kind == T_CONST)
@@ -96,6 +99,10 @@ static Temp_temp munchExp(T_exp e)
 			// MEM(e1)
 			Temp_temp r = Temp_newtemp();
 			T_exp e1 = mem->u.MEM;
+			if (e1 == NULL)
+			{
+				return r;
+			}
 			sprintf(buf, "lw `d0, 0(`s0)\n");
 			emit(AS_Oper(buf, Temp_TempList(r, NULL), Temp_TempList(munchExp(e1), NULL), NULL));
 			return r;
