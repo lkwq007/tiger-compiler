@@ -1,0 +1,55 @@
+
+{
+ "MOVE":{
+  "TEMP": "t$v0",
+  "CONST":"0"}
+,
+ "MOVE":{
+  "TEMP": "t$v0",
+  "ESEQ":{
+   "CJUMP":{"OP":"EQ",
+    "ESEQ":{
+     "MOVE":{
+      "TEMP": "t$x100",
+      "CONST":"1"},
+     "ESEQ":{
+      "CJUMP":{"OP":"GT",
+       "CONST":"10",
+       "CONST":"20",
+       "TRUE":"L1","FALSE":"L2"},
+      "ESEQ":{
+       "LABEL":"L2",
+       "ESEQ":{
+        "MOVE":{
+         "TEMP": "t$x100",
+         "CONST":"0"},
+        "ESEQ":{
+         "LABEL":"L1",
+         "TEMP": "t$x100"}}}}},
+    "CONST":"0",
+    "TRUE":"L4","FALSE":"L3"},
+   "ESEQ":{
+    "LABEL":"L3",
+    "ESEQ":{
+     "MOVE":{
+      "MEM":{
+       "TEMP": "t$x101"},
+      "CONST":"30"},
+     "ESEQ":{
+      "JUMP":{
+       "NAME":"L5"},
+      "ESEQ":{
+       "LABEL":"L4",
+       "ESEQ":{
+        "MOVE":{
+         "MEM":{
+          "TEMP": "t$x101"},
+         "CONST":"40"},
+        "ESEQ":{
+         "JUMP":{
+          "NAME":"L5"},
+         "ESEQ":{
+          "LABEL":"L5",
+          "TEMP": "t$x101"}}}}}}}}}
+
+}

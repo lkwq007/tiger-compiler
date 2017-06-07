@@ -4,7 +4,7 @@
 #include "absyn.h"
 #include "errormsg.h"
 #include "parse.h"
-#include "printtree.h"
+#include "printjson.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,6 +32,8 @@ int main(int argc, char *argv[])
 	int isFirstString = 1;
 	if (parse(argv[1])) frags = SEM_transProg(absyn_root);
 	else assert(0);
+	
+	fprintf(stdout, "\n{\n");
 	for (;frags;frags=frags->tail) {
 		if (frags->head->kind == F_procFrag) {
 			printStmList(stdout, T_StmList(frags->head->u.proc.body, NULL));
@@ -47,6 +49,9 @@ int main(int argc, char *argv[])
 						frags->head->u.stringg.label->name);
 			}
 		}
+		if (frags->tail)
+			fprintf(stdout, ",\n");
 	}
+	fprintf(stdout, "\n}");	
 	return 0;
 }

@@ -747,7 +747,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
 			}
 			S_endScope(venv);
-			printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
+			// printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
 		}
 		return NULL;
 		break;
@@ -764,6 +764,6 @@ F_fragList SEM_transProg(A_exp exp)
 	Tr_level level = Tr_outermost();
 	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
 	Tr_procEntryExit(Tr_outermost(), temp.exp, NULL);
-	printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
+	// printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
 	return Tr_getResult();
 }
