@@ -10,12 +10,7 @@
 #include "printtree.h"
 
  /* local function prototype */
-static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int d);
-
-static void indent(FILE *out, int d) {
-	int i;
-	for (i = 0; i <= d; i++) fprintf(out, " ");
-}
+static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int pid);
 
 static char bin_oper[][12] = {
    "PLUS", "MINUS", "TIMES", "DIVIDE",
@@ -122,12 +117,25 @@ static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int pid)
 
 void printStmList(FILE *out, T_stmList stmList)
 {
+	int flag = 0;
+	unsigned int uid=0;
 	if (id == 0)
 	{
 		fprintf(out, "graph \"\" {\nn0 [label=\"program\"]\n");
 		id++;
 	}
+	if (stmList->head->kind == T_LABEL)
+	{
+		if (S_Symbol("main") == stmList->head->u.LABEL)
+		{
+			flag = 1;
+		}
+	}
 	for (; stmList; stmList = stmList->tail) {
-		pr_stm(out, stmList->head, 0);
+		uid=pr_stm(out, stmList->head, uid);
+	}
+	if (flag)
+	{
+		fprintf(out, "}\n");
 	}
 }
