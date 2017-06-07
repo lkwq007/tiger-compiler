@@ -245,3 +245,4 @@ ModelManifest.xml
 .vscode/
 .DS_store
 
+*.s
