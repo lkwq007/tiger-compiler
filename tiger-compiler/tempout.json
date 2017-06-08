@@ -1,55 +1,104 @@
-
-{
- "MOVE":{
-  "TEMP": "t$v0",
-  "CONST":"0"}
-,
- "MOVE":{
-  "TEMP": "t$v0",
-  "ESEQ":{
-   "CJUMP":{"OP":"EQ",
-    "ESEQ":{
-     "MOVE":{
-      "TEMP": "t$x100",
-      "CONST":"1"},
-     "ESEQ":{
-      "CJUMP":{"OP":"GT",
-       "CONST":"10",
-       "CONST":"20",
-       "TRUE":"L1","FALSE":"L2"},
-      "ESEQ":{
-       "LABEL":"L2",
-       "ESEQ":{
-        "MOVE":{
-         "TEMP": "t$x100",
-         "CONST":"0"},
-        "ESEQ":{
-         "LABEL":"L1",
-         "TEMP": "t$x100"}}}}},
-    "CONST":"0",
-    "TRUE":"L4","FALSE":"L3"},
-   "ESEQ":{
-    "LABEL":"L3",
-    "ESEQ":{
-     "MOVE":{
-      "MEM":{
-       "TEMP": "t$x101"},
-      "CONST":"30"},
-     "ESEQ":{
-      "JUMP":{
-       "NAME":"L5"},
-      "ESEQ":{
-       "LABEL":"L4",
-       "ESEQ":{
-        "MOVE":{
-         "MEM":{
-          "TEMP": "t$x101"},
-         "CONST":"40"},
-        "ESEQ":{
-         "JUMP":{
-          "NAME":"L5"},
-         "ESEQ":{
-          "LABEL":"L5",
-          "TEMP": "t$x101"}}}}}}}}}
-
-}
+graph "" {
+n0 [label="program"]
+n0--n1;
+n1 [label="MOVE"];
+n1--n2;
+n2 [label="TEMP $v0"];
+n1--n3;
+n3 [label="ESEQ"];
+n3--n4;
+n4 [label="CJUMP"];
+n4--n5;
+n5 [label="EQ"];
+n4--n6;
+n6 [label="L3"];
+n4--n7;
+n7 [label="L2"];
+n4--n8;
+n8 [label="ESEQ"];
+n8--n9;
+n9 [label="MOVE"];
+n9--na;
+na [label="TEMP $x100"];
+n9--nb;
+nb [label="CONST 1"];
+n8--nc;
+nc [label="ESEQ"];
+nc--nd;
+nd [label="CJUMP"];
+nd--ne;
+ne [label="GT"];
+nd--nf;
+nf [label="L0"];
+nd--n10;
+n10 [label="L1"];
+nd--n11;
+n11 [label="CONST 10"];
+nd--n12;
+n12 [label="CONST 20"];
+nc--n13;
+n13 [label="ESEQ"];
+n13--n14;
+n14 [label="LABEL L1"];
+n13--n15;
+n15 [label="ESEQ"];
+n15--n16;
+n16 [label="MOVE"];
+n16--n17;
+n17 [label="TEMP $x100"];
+n16--n18;
+n18 [label="CONST 0"];
+n15--n19;
+n19 [label="ESEQ"];
+n19--n1a;
+n1a [label="LABEL L0"];
+n19--n1b;
+n1b [label="TEMP $x100"];
+n4--n1c;
+n1c [label="CONST 0"];
+n3--n1d;
+n1d [label="ESEQ"];
+n1d--n1e;
+n1e [label="LABEL L2"];
+n1d--n1f;
+n1f [label="ESEQ"];
+n1f--n20;
+n20 [label="MOVE"];
+n20--n21;
+n21 [label="MEM"];
+n21--n22;
+n22 [label="TEMP $x101"];
+n20--n23;
+n23 [label="CONST 30"];
+n1f--n24;
+n24 [label="ESEQ"];
+n24--n25;
+n25 [label="JUMP"];
+n25--n26;
+n26 [label="NAME L4"];
+n24--n27;
+n27 [label="ESEQ"];
+n27--n28;
+n28 [label="LABEL L3"];
+n27--n29;
+n29 [label="ESEQ"];
+n29--n2a;
+n2a [label="MOVE"];
+n2a--n2b;
+n2b [label="MEM"];
+n2b--n2c;
+n2c [label="TEMP $x101"];
+n2a--n2d;
+n2d [label="CONST 40"];
+n29--n2e;
+n2e [label="ESEQ"];
+n2e--n2f;
+n2f [label="JUMP"];
+n2f--n30;
+n30 [label="NAME L4"];
+n2e--n31;
+n31 [label="ESEQ"];
+n31--n32;
+n32 [label="LABEL L4"];
+n31--n33;
+n33 [label="TEMP $x101"];
