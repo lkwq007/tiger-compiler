@@ -25,6 +25,7 @@ static unsigned int pr_stm(FILE *out, T_stm stm, unsigned int pid)
 {
 	unsigned int uid = id;
 	id++;
+	if(pid!=0)
 	fprintf(out, "n%x--n%x;\n", pid, uid);
 	switch (stm->kind) {
 	case T_SEQ:
@@ -73,6 +74,7 @@ static unsigned int pr_tree_exp(FILE *out, T_exp exp, unsigned int pid)
 {
 	unsigned int uid = id;
 	id++;
+	if (pid != 0)
 	fprintf(out, "n%x--n%x;\n", pid, uid);
 	switch (exp->kind) {
 	case T_BINOP:
@@ -121,7 +123,7 @@ void printStmList(FILE *out, T_stmList stmList)
 	unsigned int uid=0;
 	if (id == 0)
 	{
-		fprintf(out, "graph \"\" {\nn0 [label=\"program\"]\n");
+		fprintf(out, "graph \"\" {\n");
 		id++;
 	}
 	if (stmList->head->kind == T_LABEL)

@@ -13,17 +13,20 @@ SEM_OBJECTS = test_semantic.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.
 PARSE_OBJECTS= parse_test.o parse.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o \
 	table.o prabsyn.o
 ASSEM_OBJECTS = main.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o parse.o \
+	table.o prabsyn.o env.o semant.o types.o temp.o translate.o mipsframe.o tree.o assem.o printdot.o canon.o escape.o mipscodegen.o errormsg.o
+ASSEMIR_OBJECTS = main.o y.tab.o lex.yy.o errormsg.o util.o symbol.o absyn.o parse.o \
 	table.o prabsyn.o env.o semant.o types.o temp.o translate.o mipsframe.o tree.o assem.o printtree.o canon.o escape.o mipscodegen.o errormsg.o
 
 SEM_OBJS = $(patsubst %,$(ODIR)/%,$(SEM_OBJECTS))
 PARSE_OBJS = $(patsubst %,$(ODIR)/%,$(PARSE_OBJECTS))
 ASSEM_OBJS = $(patsubst %,$(ODIR)/%,$(ASSEM_OBJECTS))
-
+ASSEMIR_OBJS = $(patsubst %,$(ODIR)/%,$(ASSEMIR_OBJECTS))
 
 
 SEM_PROG_NAME=$(BDIR)/semantest
 PARSE_PROG_NAME=$(BDIR)/parsetest
 ASSEM_PROG_NAME=$(BDIR)/assemtest
+ASSEMIR_PROG_NAME=$(BDIR)/assemirtest
 
 semantest: $(SEM_OBJS)
 	$(COMPILER) $^ $(OPTIONS) $(SEM_PROG_NAME)
@@ -31,7 +34,8 @@ parsetest: $(PARSE_OBJS)
 	$(COMPILER) $^ $(OPTIONS) $(PARSE_PROG_NAME)
 assemtest: $(ASSEM_OBJS)
 	$(COMPILER) $^ $(OPTIONS) $(ASSEM_PROG_NAME)
-
+assemirtest: $(ASSEMIR_OBJS)
+	$(COMPILER) $^ $(OPTIONS) $(ASSEMIR_PROG_NAME)
 	
 $(ODIR)/%.o: $(SDIR)/%.c
 	$(COMPILER) $(CFLAGS) $@ $<

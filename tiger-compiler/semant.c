@@ -16,7 +16,7 @@ static Ty_ty actual_ty(Ty_ty dummy);
 static bool is_equal_ty(Ty_ty type, Ty_ty exp)
 {
 	type = actual_ty(type);
-	exp = actual_ty(type);
+	exp = actual_ty(exp);
 	int tKind = type->kind;
 	int eKind = exp->kind;
 	// the same array or record type?
@@ -433,7 +433,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		}
 		S_endScope(tenv);
 		S_endScope(venv);
-		return expTy(Tr_seqExp(list), exp.ty);
+		return expTy(Tr_seqExp(list), actual_ty(exp.ty));
 	}
 	case A_recordExp:
 	{
@@ -472,7 +472,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 				}
 				if (field_matched&&tylist == NULL&&list == NULL)
 				{
-					return expTy(Tr_recordExp(trlist, size), type);
+					return expTy(Tr_recordExp(trlist, size), actual_ty(type));
 				}
 				else
 				{
@@ -499,7 +499,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			}
 			if (is_equal_ty(type->u.array, init.ty))
 			{
-				return expTy(Tr_arrayExp(size.exp, init.exp), type);
+				return expTy(Tr_arrayExp(size.exp, init.exp), actual_ty(type));
 			}
 			EM_error(a->pos, "Array init type not matched");
 		}
@@ -552,7 +552,7 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		}
 		if (is_exist)
 		{
-			return expTy(Tr_fieldVar(field.exp, index), list->head->ty);
+			return expTy(Tr_fieldVar(field.exp, index), actual_ty(list->head->ty));
 		}
 		EM_error(v->pos, "record not contain this field");
 		return expTy(Tr_noExp(), Ty_Void());
@@ -571,7 +571,7 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			EM_error(v->u.subscript.exp->pos, "subscript should be interger");
 			break;
 		}
-		return expTy(Tr_subscriptVar(ptr.exp, exp.exp), ptr.ty->u.array);
+		return expTy(Tr_subscriptVar(ptr.exp, exp.exp), actual_ty(ptr.ty->u.array));
 	}
 	}
 	return expTy(Tr_noExp(), Ty_Void());
@@ -656,14 +656,25 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 	// deal with recursive type defining
 	case A_typeDec:
 	{
-		A_nametyList list = d->u.type;
+		A_nametyList list = d->u.type,nest;
 		Ty_ty type, temp;
 		for (list; list; list = list->tail)
 		{
 			type = Ty_Name(list->head->name, NULL);
 			S_enter(tenv, list->head->name, type);
 		}
-
+		for (list = d->u.type; list; list = list->tail)
+		{
+			for (nest = list->tail; nest; nest = nest->tail)
+			{
+				if (list->head->name==nest->head->name)
+				{
+					EM_error(d->pos, "Error same type def in %s", S_name(type->u.name.sym));
+					goto TYPE_err;
+					break;
+				}
+			}
+		}
 		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look(tenv, list->head->name);
@@ -694,7 +705,7 @@ TYPE_err:
 	case A_functionDec:
 	{
 		// TODO more accurate access type
-		A_fundecList list = d->u.function;
+		A_fundecList list = d->u.function,nest;
 		for (; list; list = list->tail)
 		{
 			A_fundec f = list->head;
@@ -719,6 +730,18 @@ TYPE_err:
 		for (list = d->u.function; list; list = list->tail)
 		{
 			A_fundec f = list->head;
+			for (nest = list->tail; nest; nest=nest->tail)
+			{
+				A_fundec f_temp = nest->head;
+				if (f->name == f_temp->name)
+				{
+					EM_error(f_temp->pos, "Error same function %s in one def list", S_name(f_temp->name));
+				}
+			}
+		}
+		for (list = d->u.function; list; list = list->tail)
+		{
+			A_fundec f = list->head;
 			E_enventry func = S_look(venv, f->name);
 			Ty_ty resultTy = func->u.fun.result;
 			Ty_tyList formalTys = func->u.fun.formals;
@@ -733,7 +756,7 @@ TYPE_err:
 					if (t->head == NULL)
 					{
 						S_enter(venv, l->head->name, E_VarEntry(acclist->head, t->head));
-						EM_error(f->pos, "Undefined formal type %s in %s", l->head->name, f->name);
+						EM_error(f->pos, "Undefined formal type %s in %s", S_name(l->head->name), S_name(f->name));
 					}
 					else
 					{
@@ -749,7 +772,7 @@ TYPE_err:
 				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
 			}
 			S_endScope(venv);
-			// printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
+			printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
 		}
 		return NULL;
 		break;
@@ -766,6 +789,6 @@ F_fragList SEM_transProg(A_exp exp)
 	Tr_level level = Tr_outermost();
 	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
 	Tr_procEntryExit(Tr_outermost(), temp.exp, NULL);
-	// printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
+	printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
 	return Tr_getResult();
 }
