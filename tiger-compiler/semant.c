@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "printtree.h"
-
+// TODO more accurate error msg
 static Ty_ty actual_ty(Ty_ty dummy);
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
 static bool is_equal_ty(Ty_ty type, Ty_ty exp)
@@ -40,6 +40,7 @@ static bool is_equal_ty(Ty_ty type, Ty_ty exp)
 // local function to skip past all the Names
 static Ty_ty actual_ty(Ty_ty dummy)
 {
+	// skip the alias name
 	if (dummy&&dummy->kind == Ty_name)
 	{
 		return actual_ty(dummy->u.name.ty);
@@ -48,6 +49,7 @@ static Ty_ty actual_ty(Ty_ty dummy)
 }
 
 // lookup actual ty in tenv
+// in some cases, e.g. type dec, we should not use this function, as the actual type may not exist
 static Ty_ty S_look_ty(S_table tenv, S_symbol sym)
 {
 	Ty_ty type = S_look(tenv, sym);
@@ -59,7 +61,7 @@ static Ty_ty S_look_ty(S_table tenv, S_symbol sym)
 }
 
 // error checking in makelist
-// make formal tylist from f args
+// make formal tylist from function args
 static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 {
 	Ty_ty temp;
@@ -71,13 +73,15 @@ static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(params->head->pos, "Undefined type %s of formal %s", S_name(params->head->typ), S_name(params->head->name));
+		EM_error(params->head->pos, "Undefined type <%s> of formal \"%s\"", S_name(params->head->typ), S_name(params->head->name));
+		// return int type
 		temp = Ty_Int();
 	}
 	return Ty_TyList(temp, makeFormalTyList(tenv, params->tail));
 }
 
 // make field tylist from record field list
+// TODO: this function should be removed
 static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 {
 	Ty_ty temp;
@@ -89,13 +93,13 @@ static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(record->head->pos, "Undefined type %s of field %s", S_name(record->head->typ), S_name(record->head->name));
+		EM_error(record->head->pos, "Undefined type <%s> of field \"%s\"", S_name(record->head->typ), S_name(record->head->name));
 		temp = Ty_Int();
 	}
 	return Ty_TyList(temp, makeFieldTyList(tenv, record->tail));
 }
 
-// make field tylist from record field list
+// make field tylist from abstract record field list
 static Ty_fieldList makeFieldList(S_table tenv, A_fieldList record)
 {
 	Ty_ty temp;
@@ -108,7 +112,7 @@ static Ty_fieldList makeFieldList(S_table tenv, A_fieldList record)
 	if (temp == NULL)
 	{
 		// won't return NULL ty
-		EM_error(record->head->pos, "Undefined type %s of field %s", S_name(record->head->typ), S_name(record->head->name));
+		EM_error(record->head->pos, "Undefined type <%s> of field \"%s\"", S_name(record->head->typ), S_name(record->head->name));
 		temp = Ty_Int();
 		name = S_Symbol("error");
 	}
@@ -161,7 +165,6 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 	}
 	case A_callExp:
 	{
-		// TODO call exp
 		struct expty exp;
 		A_expList list;
 		Ty_tyList tylist;
@@ -196,17 +199,17 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			if (args_matched&&tylist == NULL&&list == NULL)
 			{
 				// using actual return type
-				// TODO: call tr_exp, with label, level, but explist finished
 				return expTy(Tr_callExp(binding->u.fun.level, binding->u.fun.label, elist), actual_ty(binding->u.fun.result));
 			}
 			else
 			{
-				EM_error(a->pos, "Error args types or nums in %s", S_name(a->u.call.func));
+				// TODO, full type msg in error
+				EM_error(a->pos, "Error: This function \"%s\" is applied with mismatched arguments", S_name(a->u.call.func));
 			}
 		}
 		else
 		{
-			EM_error(a->pos, "Error function name %s", S_name(a->u.call.func));
+			EM_error(a->pos, "Error: Unbound function \"%s\"", S_name(a->u.call.func));
 		}
 		return expTy(Tr_noExp(), Ty_Void());
 	}
@@ -224,11 +227,11 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		{
 			if (left.ty->kind != Ty_int)
 			{
-				EM_error(a->u.op.left->pos, "integer required");
+				EM_error(a->u.op.left->pos, "Error: This expression was expected of type int");
 			}
 			if (right.ty->kind != Ty_int)
 			{
-				EM_error(a->u.op.left->pos, "integer required");
+				EM_error(a->u.op.right->pos, "Error: This expression was expected of type int");
 			}
 			return expTy(Tr_opExp(oper, left.exp, right.exp), Ty_Int());
 		}
@@ -239,11 +242,11 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		{
 			if (left.ty->kind != Ty_int)
 			{
-				EM_error(a->u.op.left->pos, "integer required");
+				EM_error(a->u.op.left->pos, "This expression was expected of type int");
 			}
 			if (right.ty->kind != Ty_int)
 			{
-				EM_error(a->u.op.left->pos, "integer required");
+				EM_error(a->u.op.right->pos, "This expression was expected of type int");
 			}
 			break;
 		}
@@ -252,19 +255,19 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		{
 			if (left.ty->kind != Ty_int&&left.ty->kind != Ty_string&&left.ty->kind != Ty_array&&left.ty->kind != Ty_record&&left.ty->kind != Ty_nil)
 			{
-				EM_error(a->u.op.left->pos, "int, string, array, record required or unknown nil");
+				EM_error(a->u.op.left->pos, "Error: This expression can not be compared, only int, string, array, record or nil can be compared");
 			}
 			if (right.ty->kind != Ty_int&&right.ty->kind != Ty_string&&right.ty->kind != Ty_array&&right.ty->kind != Ty_record&&right.ty->kind != Ty_nil)
 			{
-				EM_error(a->u.op.right->pos, "int, string, array, record required or unknown nil");
+				EM_error(a->u.op.right->pos, "Error: This expression can not be compared, only int, string, array, record or nil can be compared");
 			}
 			if (left.ty->kind == Ty_nil&&right.ty->kind == Ty_nil)
 			{
-				EM_error(a->u.op.left->pos, "unknown nil");
+				EM_error(a->pos, "Error: Can not compare nil with nil");
 			}
 			if (!is_equal_ty(left.ty, right.ty))
 			{
-				EM_error(a->u.op.left->pos, "comparing var type not matched");
+				EM_error(a->pos, "Error: Can not compare expressions with different types");
 			}
 			break;
 		}
@@ -273,8 +276,10 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		}
 		if (left.ty->kind == Ty_string)
 		{
+			// compare string
 			return expTy(Tr_stringRelExp(oper, left.exp, right.exp), Ty_Int());
 		}
+		// 1-true, 0-false, returning int
 		return expTy(Tr_relExp(oper, left.exp, right.exp), Ty_Int());
 	}
 	case A_seqExp:
@@ -298,10 +303,12 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 					temp = temp->tail;
 				}
 			}
+			// using actual ty
 			return expTy(Tr_seqExp(trlist), actual_ty(exp.ty));
 		}
 		else
 		{
+			// empty seq
 			return expTy(Tr_noExp(), Ty_Void());
 		}
 	}
@@ -316,7 +323,8 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		}
 		else
 		{
-			EM_error(a->pos, "Error, assign type not matched");
+
+			EM_error(a->pos, "Error: Assignment type mismatch");
 		}
 		return expTy(Tr_noExp(), Ty_Void());
 	}
@@ -326,7 +334,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		struct expty then = transExp(level, breakk, venv, tenv, a->u.iff.then);
 		if (test.ty->kind != Ty_int)
 		{
-			EM_error(a->pos, "Error if test");
+			EM_error(a->u.iff.test->pos, "Error: This testing expression was expected of type int");
 		}
 		if (a->u.iff.elsee)
 		{
@@ -337,43 +345,42 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			}
 			else
 			{
-				EM_error(a->pos, "then exp & else exp type not matched");
+				EM_error(a->u.iff.then->pos, "Error: Two branches of if-else expression should have the same type");
 			}
 		}
 		if (then.ty->kind != Ty_void)
 		{
-			EM_error(a->pos, "if-else exp must have void value");
+			EM_error(a->u.iff.then->pos, "Error: if-then expression must have void value");
 		}
 		return expTy(Tr_ifExp(test.exp, then.exp, Tr_noExp()), Ty_Void());
 	}
 	case A_whileExp:
 	{
-		// TODO break checking
+		// allocate an end label for the `break` exp jumping to
+		// for convenience, we use a label to achieve that, it dose do harm to the abstract interface
 		Temp_label end = Temp_newlabel();
 		struct expty test = transExp(level, breakk, venv, tenv, a->u.whilee.test);
 		struct expty body = transExp(level, end, venv, tenv, a->u.whilee.body);
 		if (test.ty->kind != Ty_int)
 		{
-			EM_error(a->pos, "Error while test");
+			EM_error(a->u.whilee.test->pos, "Error: This testing expression was expected of type int");
 		}
 		if (body.ty->kind != Ty_void)
 		{
-			EM_error(a->pos, "while exp must have void value");
+			EM_error(a->u.whilee.body->pos, "Error: This expression must have void value");
 		}
 		return expTy(Tr_whileExp(test.exp, end, body.exp), Ty_Void());
 	}
 	case A_forExp:
 	{
-		// TODO break checking
 		Temp_label end = Temp_newlabel();
-		// TODO allco for access
 		Tr_access access;
 		struct expty lo = transExp(level, breakk, venv, tenv, a->u.forr.lo);
 		struct expty hi = transExp(level, breakk, venv, tenv, a->u.forr.hi);
 		struct expty body;
 		if (lo.ty->kind != Ty_int || hi.ty->kind != Ty_int)
 		{
-			EM_error(a->pos, "range <lo hi> in for exp must be int");
+			EM_error(a->u.forr.lo->pos, "Error: Range lo-hi in for exp must have int value");
 		}
 		S_beginScope(venv);
 		access = Tr_allocLocal(level, a->u.forr.escape);
@@ -382,17 +389,16 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		S_endScope(venv);
 		if (body.ty->kind != Ty_void)
 		{
-			EM_error(a->pos, "the body of for exp must be void");
+			EM_error(a->u.forr.body->pos, "Error: This expression must have void value");
 		}
 		return expTy(Tr_forExp(access, end, lo.exp, hi.exp, body.exp), Ty_Void());
 	}
 	case A_breakExp:
 	{
-		// how to deal with break?
-		// we need extra args to record break
+		// using breakk to record while and for end label
 		if (breakk == NULL)
 		{
-			EM_error(a->pos, "break should be nested in while or for");
+			EM_error(a->pos, "Error: break expression should be nested in the body of while or for expression");
 			return expTy(Tr_noExp(), Ty_Void());
 		}
 		return expTy(Tr_breakExp(breakk), Ty_Void());
