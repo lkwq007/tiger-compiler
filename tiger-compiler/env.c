@@ -24,6 +24,7 @@ E_enventry E_FunEntry(Tr_level level, Temp_label label, Ty_tyList formals, Ty_ty
 	return env;
 }
 
+// the in-bulit types
 S_table E_base_tenv(void)
 {
 	S_table t = S_empty();
@@ -31,6 +32,8 @@ S_table E_base_tenv(void)
 	S_enter(t, S_Symbol("string"), Ty_String());
 	return t;
 }
+
+// the in-bulit functions, implemented in the runtime as external call
 S_table E_base_venv(void)
 {
 	S_table t = S_empty();

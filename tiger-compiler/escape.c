@@ -1,3 +1,6 @@
+/*
+ * the escape module will find those escaped variables
+ */
 #include "escape.h"
 #include "symbol.h"
 #include "absyn.h"
