@@ -200,14 +200,15 @@ Tr_exp Tr_stringExp(string str) {
 T_expList translateToTreeExpList(Tr_expList argList) {
 	T_expList res = NULL;
 	T_expList tailList = NULL;
-    if(!argList) return NULL;
+	if (!argList) return NULL;
 	Tr_exp iter = argList->head;
 	for (; argList; argList = argList->tail) {
 		iter = argList->head;
 		if (res) {
 			tailList->tail = T_ExpList(unEx(iter), NULL);
 			tailList = tailList->tail;
-		} else {
+		}
+		else {
 			res = T_ExpList(unEx(iter), NULL);
 			tailList = res;
 		}
@@ -273,7 +274,7 @@ Tr_exp Tr_stringRelExp(int op, Tr_exp left, Tr_exp right) {
 }
 Tr_exp Tr_recordExp(Tr_expList fields, int size) {
 	Temp_temp r = Temp_newtemp();
-	T_stm alloc = T_Move(T_Temp(r),T_Eseq(T_Exp(F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL))), T_Temp(F_RV())));
+	T_stm alloc = T_Move(T_Temp(r), T_Eseq(T_Exp(F_externalCall(String("initRecord"), T_ExpList(T_Const(size * F_wordSize), NULL))), T_Temp(F_RV())));
 	T_stm seq = T_Exp(T_Const(0));
 	for (int i = size - 1; fields; fields = fields->tail, i--)
 	{
@@ -308,24 +309,24 @@ Tr_exp Tr_ifExp(Tr_exp cond, Tr_exp then_, Tr_exp else_) {
 	T_stm joinJump = T_Jump(T_Name(join), Temp_LabelList(join, NULL));
 	doPatch(condition->trues, t);
 	doPatch(condition->falses, f);
-	if (else_->kind == Tr_ex){
+	if (else_->kind == Tr_ex) {
 		// return Tr_noExp();
 	//todo fix!
-        T_exp then_ex = unEx(then_);
-        T_exp else_ex = unEx(else_);
-		return Tr_Ex(T_Eseq(condition->stm,T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(T_Temp(r)), then_ex),T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(T_Temp(r)), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r))))))))));
-        // return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), 
-        //         T_Eseq(T_Move(T_Temp(r), then_ex),
-        //         T_Eseq(joinJump, T_Eseq(T_Label(f),
-        //                 T_Eseq(T_Move(T_Temp(r), else_ex), 
-        //                     T_Eseq(joinJump, 
-        //                     T_Eseq(T_Label(join), T_Temp(r))))))))));
-        }
+		T_exp then_ex = unEx(then_);
+		T_exp else_ex = unEx(else_);
+		return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), T_Eseq(T_Move(T_Mem(T_Temp(r)), then_ex), T_Eseq(joinJump, T_Eseq(T_Label(f), T_Eseq(T_Move(T_Mem(T_Temp(r)), else_ex), T_Eseq(joinJump, T_Eseq(T_Label(join), T_Temp(r))))))))));
+		// return Tr_Ex(T_Eseq(condition->stm, T_Eseq(T_Label(t), 
+		//         T_Eseq(T_Move(T_Temp(r), then_ex),
+		//         T_Eseq(joinJump, T_Eseq(T_Label(f),
+		//                 T_Eseq(T_Move(T_Temp(r), else_ex), 
+		//                     T_Eseq(joinJump, 
+		//                     T_Eseq(T_Label(join), T_Temp(r))))))))));
+	}
 	else {
-        T_stm then_stm;
-        if (then_->kind == Tr_ex) then_stm = T_Exp(then_->u.ex);
-        else then_stm = (then_->kind == Tr_nx) ? then_->u.nx : then_->u.cx->stm;
-        T_stm else_stm = (else_->kind == Tr_nx) ? else_->u.nx : else_->u.cx->stm;
+		T_stm then_stm;
+		if (then_->kind == Tr_ex) then_stm = T_Exp(then_->u.ex);
+		else then_stm = (then_->kind == Tr_nx) ? then_->u.nx : then_->u.cx->stm;
+		T_stm else_stm = (else_->kind == Tr_nx) ? else_->u.nx : else_->u.cx->stm;
 		// T_stm else_stm = unNx(else_), then_stm = unNx(then_);
 		return Tr_Nx(T_Seq(condition->stm, T_Seq(T_Label(t), T_Seq(then_stm, T_Seq(joinJump, T_Seq(T_Label(f), T_Seq(else_stm, T_Seq(joinJump, T_Label(join)))))))));
 	}
@@ -383,11 +384,11 @@ Tr_exp Tr_forExp(Tr_access access,
 	//				T_Eseq(T_Label(test), 
 	//					T_Eseq(T_Cjump(T_eq, cond, T_Const(0), start, end), 
 	//						T_Eseq(T_Label(end), T_Const(0)))))))));
-	return Tr_Ex(T_Eseq(mv, 
-		T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)), 
-			T_Eseq(T_Label(start), 
-				T_Eseq(body_nx, 
-					T_Eseq(T_Label(test), 
+	return Tr_Ex(T_Eseq(mv,
+		T_Eseq(T_Jump(T_Name(test), Temp_LabelList(test, NULL)),
+			T_Eseq(T_Label(start),
+				T_Eseq(body_nx,
+					T_Eseq(T_Label(test),
 						T_Eseq(cond,
 							T_Eseq(T_Label(end), T_Const(0)))))))));
 
@@ -407,7 +408,7 @@ Tr_exp Tr_simpleVar(Tr_access access, Tr_level level) {
 		}
 		else
 		{
-			address = T_Mem(T_Binop(T_plus, T_Temp(F_FP()),T_Const(0)));
+			address = T_Mem(T_Binop(T_plus, T_Temp(F_FP()), T_Const(0)));
 		}
 		level = level->parent;
 	}

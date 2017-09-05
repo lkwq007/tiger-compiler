@@ -656,7 +656,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 	// deal with recursive type defining
 	case A_typeDec:
 	{
-		A_nametyList list = d->u.type,nest;
+		A_nametyList list = d->u.type, nest;
 		Ty_ty type, temp;
 		for (list; list; list = list->tail)
 		{
@@ -667,7 +667,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 		{
 			for (nest = list->tail; nest; nest = nest->tail)
 			{
-				if (list->head->name==nest->head->name)
+				if (list->head->name == nest->head->name)
 				{
 					EM_error(d->pos, "Error same type def in %s", S_name(type->u.name.sym));
 					goto TYPE_err;
@@ -697,7 +697,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				type = type->u.name.ty;
 			}
 		}
-TYPE_err:
+	TYPE_err:
 		return NULL;
 		break;
 	}
@@ -705,7 +705,7 @@ TYPE_err:
 	case A_functionDec:
 	{
 		// TODO more accurate access type
-		A_fundecList list = d->u.function,nest;
+		A_fundecList list = d->u.function, nest;
 		for (; list; list = list->tail)
 		{
 			A_fundec f = list->head;
@@ -730,7 +730,7 @@ TYPE_err:
 		for (list = d->u.function; list; list = list->tail)
 		{
 			A_fundec f = list->head;
-			for (nest = list->tail; nest; nest=nest->tail)
+			for (nest = list->tail; nest; nest = nest->tail)
 			{
 				A_fundec f_temp = nest->head;
 				if (f->name == f_temp->name)

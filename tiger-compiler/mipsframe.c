@@ -40,7 +40,7 @@ static void F_map(string str, Temp_temp temp)
 
 // mips $fp, $sp, $ra, $v1 => $rv (tiger can return 0 or 1 value
 // Init special regs
-static Temp_temp fp = NULL, ra = NULL, sp = NULL, rv=NULL;
+static Temp_temp fp = NULL, ra = NULL, sp = NULL, rv = NULL;
 Temp_temp F_FP(void)
 {
 	if (fp == NULL)
@@ -142,7 +142,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 	f->name = name;
 	f->formals = NULL;
 	f->local_count = 0;
-	for (formals; formals; formals=formals->tail)
+	for (formals; formals; formals = formals->tail)
 	{
 		if (formals->head)
 		{
@@ -160,7 +160,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals)
 		}
 		else
 		{
-			f->formals =F_AccessList(access, NULL);
+			f->formals = F_AccessList(access, NULL);
 			tmp = f->formals;
 		}
 	}
@@ -223,7 +223,7 @@ static Temp_tempList returnSink = NULL;
 AS_instrList F_procEntryExit2(AS_instrList body)
 {
 	if (!returnSink)
-	{	
+	{
 		returnSink = Temp_TempList(F_RV(), NULL);
 	}
 	return AS_splice(body, AS_InstrList(AS_Oper("", NULL, returnSink, NULL), NULL));

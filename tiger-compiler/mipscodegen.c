@@ -82,7 +82,7 @@ static Temp_temp munchExp(T_exp e)
 				T_exp e1 = mem->u.BINOP.left;
 				T_exp e2 = mem->u.BINOP.right;
 				sprintf(buf, "add $t0, `s0, `s1\nlw `d0 0($t0)\n");
-				emit(AS_Oper(buf, Temp_TempList(r, NULL), Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2),NULL)), NULL));
+				emit(AS_Oper(buf, Temp_TempList(r, NULL), Temp_TempList(munchExp(e1), Temp_TempList(munchExp(e2), NULL)), NULL));
 			}
 		}
 		if (mem->kind == T_CONST)
@@ -318,8 +318,8 @@ static Temp_temp munchExp(T_exp e)
 	{
 		// TODO: fix call
 		emit(AS_Oper("addi $sp, $sp, -4\nsw $ra, 0($sp)\n", NULL, NULL, NULL));
-		Temp_temp r=munchExp(e->u.CALL.fun);
-		Temp_tempList list=munchArgs(0,e->u.CALL.args);
+		Temp_temp r = munchExp(e->u.CALL.fun);
+		Temp_tempList list = munchArgs(0, e->u.CALL.args);
 		//emit(AS_Oper("jal `s0\n", calldefs, Temp_TempList(r, list), NULL));
 		emit(AS_Oper("jal `s0\n", NULL, Temp_TempList(r, list), NULL));
 		int num = remunchArgs(e->u.CALL.args);
@@ -364,7 +364,7 @@ static void munchStm(T_stm s)
 			else if (dst->u.MEM->kind == T_CONST)
 			{
 				// MOVE(MEM(CONST(n)), e1)
-				T_exp e1=src;
+				T_exp e1 = src;
 				int num = dst->u.MEM->u.CONST;
 				sprintf(buf, "sw `s0, %d", num);
 				emit(AS_Oper(buf, NULL, Temp_TempList(munchExp(e1), NULL), NULL));
@@ -411,7 +411,7 @@ static void munchStm(T_stm s)
 	{
 		// LABETemp_TempList()
 		sprintf(buf, "%s:\n", Temp_labelstring(s->u.LABEL));
-		emit(AS_Label(buf,s->u.LABEL));
+		emit(AS_Label(buf, s->u.LABEL));
 		break;
 	}
 	case T_JUMP:

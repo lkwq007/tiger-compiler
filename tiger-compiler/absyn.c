@@ -7,7 +7,7 @@
 #include "symbol.h" /* symbol table data structures */
 #include "absyn.h"  /* abstract syntax data structures */
 
-A_exp absyn_root=NULL;
+A_exp absyn_root = NULL;
 
 A_var A_SimpleVar(A_pos pos, S_symbol sym)
 {
@@ -329,4 +329,3 @@ A_efieldList A_EfieldList(A_efield head, A_efieldList tail)
 	p->tail = tail;
 	return p;
 }
-
