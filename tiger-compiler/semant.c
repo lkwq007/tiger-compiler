@@ -10,7 +10,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "printtree.h"
-// TODO more accurate error msg
 static Ty_ty actual_ty(Ty_ty dummy);
 // [del]assume that exp using actual Ty_ty[del], which can handle type & init exp, or two types
 static bool is_equal_ty(Ty_ty type, Ty_ty exp)
@@ -78,25 +77,6 @@ static Ty_tyList makeFormalTyList(S_table tenv, A_fieldList params)
 		temp = Ty_Int();
 	}
 	return Ty_TyList(temp, makeFormalTyList(tenv, params->tail));
-}
-
-// make field tylist from record field list
-// TODO: this function should be removed
-static Ty_tyList makeFieldTyList(S_table tenv, A_fieldList record)
-{
-	Ty_ty temp;
-	if (record == NULL)
-	{
-		return NULL;
-	}
-	temp = S_look(tenv, record->head->typ);
-	if (temp == NULL)
-	{
-		// won't return NULL ty
-		EM_error(record->head->pos, "Undefined type <%s> of field \"%s\"", S_name(record->head->typ), S_name(record->head->name));
-		temp = Ty_Int();
-	}
-	return Ty_TyList(temp, makeFieldTyList(tenv, record->tail));
 }
 
 // make field tylist from abstract record field list
@@ -398,7 +378,7 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		// using breakk to record while and for end label
 		if (breakk == NULL)
 		{
-			EM_error(a->pos, "Error: break expression should be nested in the body of while or for expression");
+			EM_error(a->pos, "Error: break expression should be nested in the body of while or for expressions");
 			return expTy(Tr_noExp(), Ty_Void());
 		}
 		return expTy(Tr_breakExp(breakk), Ty_Void());
@@ -482,13 +462,13 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 				}
 				else
 				{
-					EM_error(a->pos, "Record type and fields not match");
+					EM_error(a->pos, "Error: Record type and fields not matched");
 				}
 			}
 		}
 		else
 		{
-			EM_error(a->pos, "Unknow record type %s", S_name(a->u.record.typ));
+			EM_error(a->pos, "Error: Unbound record type <%s>", S_name(a->u.record.typ));
 		}
 		return expTy(Tr_noExp(), Ty_Nil());
 	}
@@ -501,17 +481,17 @@ struct expty transExp(Tr_level level, Temp_label breakk, S_table venv, S_table t
 			struct expty init = transExp(level, breakk, venv, tenv, a->u.array.init);
 			if (size.ty->kind != Ty_int)
 			{
-				EM_error(a->u.array.size->pos, "size of array should be int");
+				EM_error(a->u.array.size->pos, "Error: Size of an array should be int value");
 			}
 			if (is_equal_ty(type->u.array, init.ty))
 			{
 				return expTy(Tr_arrayExp(size.exp, init.exp), actual_ty(type));
 			}
-			EM_error(a->pos, "Array init type not matched");
+			EM_error(a->pos, "Error: Array init value type not matched");
 		}
 		else
 		{
-			EM_error(a->pos, "Unknow type %s", S_name(a->u.array.typ));
+			EM_error(a->pos, "Error: Unbound type <%s>", S_name(a->u.array.typ));
 		}
 		return expTy(Tr_noExp(), Ty_Void());
 	}
@@ -533,7 +513,7 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		}
 		else
 		{
-			EM_error(v->pos, "undefined variable %s", S_name(v->u.simple));
+			EM_error(v->pos, "Error: Unbound value %s", S_name(v->u.simple));
 		}
 		return expTy(Tr_noExp(), Ty_Void());
 		break;
@@ -544,7 +524,7 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		struct expty field = transVar(level, breakk, venv, tenv, v->u.field.var);
 		if (field.ty->kind != Ty_record)
 		{
-			EM_error(v->u.field.var->pos, "variable with field but not a record");
+			EM_error(v->u.field.var->pos, "Error: This variable with field is not a record");
 		}
 		Ty_fieldList list;
 		for (list = field.ty->u.record; list; list = list->tail)
@@ -560,7 +540,7 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		{
 			return expTy(Tr_fieldVar(field.exp, index), actual_ty(list->head->ty));
 		}
-		EM_error(v->pos, "record not contain this field");
+		EM_error(v->pos, "Error: This record does not contain the field \"%s\"", S_name(v->u.field.sym));
 		return expTy(Tr_noExp(), Ty_Void());
 		break;
 	}
@@ -569,12 +549,12 @@ struct expty transVar(Tr_level level, Temp_label breakk, S_table venv, S_table t
 		struct expty exp = transExp(level, breakk, venv, tenv, v->u.subscript.exp);
 		if (ptr.ty->kind != Ty_array)
 		{
-			EM_error(v->pos, "variable with subscript is not an array");
+			EM_error(v->pos, "Error: This variable with subscript is not an array");
 			break;
 		}
 		if (exp.ty->kind != Ty_int)
 		{
-			EM_error(v->u.subscript.exp->pos, "subscript should be interger");
+			EM_error(v->u.subscript.exp->pos, "Error: This expression was expected of type int");
 			break;
 		}
 		return expTy(Tr_subscriptVar(ptr.exp, exp.exp), actual_ty(ptr.ty->u.array));
@@ -590,10 +570,11 @@ Ty_ty transTy(S_table tenv, A_ty a)
 	{
 	case A_nameTy:
 	{
+		// cannot use actual type
 		Ty_ty type = S_look(tenv, a->u.name);
 		if (type == NULL)
 		{
-			EM_error(a->pos, "Undefined nameTy %s", S_name(a->u.name));
+			EM_error(a->pos, "Error: Unbound type <%s>", S_name(a->u.name));
 			type = Ty_Int();
 		}
 		return type;
@@ -604,20 +585,21 @@ Ty_ty transTy(S_table tenv, A_ty a)
 		temp = list;
 		for (temp; temp; temp = temp->tail)
 		{
+			// will not hit
 			if (temp->head == NULL)
 			{
-				EM_error(a->pos, "Undefined field type in recordTy");
+				EM_error(a->pos, "Error: Unbound type in recordTy");
 			}
 		}
-		// TODO field list
 		return Ty_Record(list);
 	}
 	case A_arrayTy:
 	{
-		Ty_ty type = S_look_ty(tenv, a->u.array);
+		// cannot use actual type
+		Ty_ty type = S_look(tenv, a->u.array);
 		if (type == NULL)
 		{
-			EM_error(a->pos, "Undefined arrayTy %s", S_name(a->u.name));
+			EM_error(a->pos, "Error: Unbound type <%s>", S_name(a->u.array));
 			type = Ty_Int();
 		}
 		return Ty_Array(type);
@@ -634,7 +616,6 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 	{
 	case A_varDec:
 	{
-		// TODO update level args
 		Tr_access access = Tr_allocLocal(level, d->u.var.escape);
 		struct expty e = transExp(level, breakk, venv, tenv, d->u.var.init);
 		// checking init and def types·
@@ -644,7 +625,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			if (!is_equal_ty(type, e.ty))
 				//if ((e.ty->kind == Ty_nil&&type->kind != Ty_record) || type->kind != e.ty->kind)
 			{
-				EM_error(d->pos, "Init not compatible");
+				EM_error(d->pos, "Error: The type of \"%s\" and the type of init expression mismatched", S_name(d->u.var.var));
 			}
 			S_enter(venv, d->u.var.var, E_VarEntry(access, type));
 		}
@@ -652,7 +633,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 		{
 			if (e.ty->kind == Ty_nil)
 			{
-				EM_error(d->pos, "Without type dec, init cannot be nil");
+				EM_error(d->pos, "Error: Without type constraint, init value cannot be nil");
 				break;
 			}
 			S_enter(venv, d->u.var.var, E_VarEntry(access, e.ty));
@@ -664,6 +645,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 	{
 		A_nametyList list = d->u.type, nest;
 		Ty_ty type, temp;
+		// add all types as alias
 		for (list; list; list = list->tail)
 		{
 			type = Ty_Name(list->head->name, NULL);
@@ -675,18 +657,19 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			{
 				if (list->head->name == nest->head->name)
 				{
-					EM_error(d->pos, "Error same type def in %s", S_name(type->u.name.sym));
+					EM_error(d->pos, "Error: There are two types <%s> with the same name in the same (consecutive) batch of mutually recursive types", S_name(type->u.name.sym));
 					goto TYPE_err;
 					break;
 				}
 			}
 		}
+		// update the real types
 		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look(tenv, list->head->name);
 			type->u.name.ty = transTy(tenv, list->head->ty);
 		}
-		// checking looping recursive
+		// checking cyclic
 		for (list = d->u.type; list; list = list->tail)
 		{
 			type = S_look(tenv, list->head->name);
@@ -696,7 +679,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			{
 				if (type->u.name.sym == temp->u.name.sym)
 				{
-					EM_error(d->pos, "Error type def loop in %s", S_name(type->u.name.sym));
+					EM_error(d->pos, "Error: The type alias <%s> is cyclic", S_name(type->u.name.sym));
 					goto TYPE_err;
 					break;
 				}
@@ -704,17 +687,18 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			}
 		}
 	TYPE_err:
-		return NULL;
+		return Tr_noExp();
+		//return NULL;
 		break;
 	}
 	// handle recursive func and multi func
 	case A_functionDec:
 	{
-		// TODO more accurate access type
 		A_fundecList list = d->u.function, nest;
 		for (; list; list = list->tail)
 		{
 			A_fundec f = list->head;
+			// TODO more accurate access type
 			U_boolList formals = makeFormalList(f->params);
 			Temp_label flabel = Temp_newlabel();
 			Tr_level flevel = Tr_newLevel(level, flabel, formals);
@@ -725,7 +709,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			}
 			if (resultTy == NULL)
 			{
-				EM_error(d->pos, "Error return type %s of func %s", S_name(f->result), S_name(f->name));
+				EM_error(d->pos, "Error: Unbound return type <%s> of function \"%s\"", S_name(f->result), S_name(f->name));
 				resultTy = Ty_Void();
 			}
 			if (!resultTy) resultTy = Ty_Void();
@@ -741,7 +725,7 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				A_fundec f_temp = nest->head;
 				if (f->name == f_temp->name)
 				{
-					EM_error(f_temp->pos, "Error same function %s in one def list", S_name(f_temp->name));
+					EM_error(f_temp->pos, "Error: there are two functions \"%s\" with the same in the same(consecutive) batch of mutually recursive functions", S_name(f_temp->name));
 				}
 			}
 		}
@@ -759,13 +743,15 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 				Ty_tyList t;
 				for (l = f->params, t = formalTys; l; l = l->tail, t = t->tail, acclist = acclist->tail)
 				{
+					// cannot be NULL
 					if (t->head == NULL)
 					{
 						S_enter(venv, l->head->name, E_VarEntry(acclist->head, t->head));
-						EM_error(f->pos, "Undefined formal type %s in %s", S_name(l->head->name), S_name(f->name));
+						EM_error(f->pos, "Error: The type of \"%s\" is unknown in \"%s\"", S_name(l->head->name), S_name(f->name));
 					}
 					else
 					{
+						// update formals
 						S_enter(venv, l->head->name, E_VarEntry(acclist->head, t->head));
 					}
 				}
@@ -775,12 +761,12 @@ Tr_exp transDec(Tr_level level, Temp_label breakk, S_table venv, S_table tenv, A
 			Tr_procEntryExit(func->u.fun.level, body.exp, acclist);
 			if (!is_equal_ty(resultTy, body.ty))
 			{
-				EM_error(d->pos, "return type in body and def not matched in %s", S_name(f->name));
+				EM_error(d->pos, "Error: The return type of \"%s\" and the body type is matched", S_name(f->name));
 			}
 			S_endScope(venv);
-			printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
+			//printStmList(stdout, T_StmList(T_Label(func->u.fun.label), T_StmList(T_Move(T_Temp(F_RV()), unEx(body.exp)), NULL)));
 		}
-		return NULL;
+		return Tr_noExp();
 		break;
 	}
 	}
@@ -795,6 +781,6 @@ F_fragList SEM_transProg(A_exp exp)
 	Tr_level level = Tr_outermost();
 	struct expty temp = transExp(Tr_outermost(), NULL, venv, tenv, exp);
 	Tr_procEntryExit(Tr_outermost(), temp.exp, NULL);
-	printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
+	//printStmList(stdout, T_StmList(T_Label(level->name), T_StmList(T_Exp(temp.exp->u.ex), NULL)));
 	return Tr_getResult();
 }
