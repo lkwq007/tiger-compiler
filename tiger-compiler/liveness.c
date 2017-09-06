@@ -1,23 +1,27 @@
+#include "util.h"
+#include "assem.h"
 #include "temp.h"
 #include "graph.h"
 #include "flowgraph.h"
+#include "table.h"
 #include "liveness.h"
-#include "util.h"
-// live at some node
+// map node -> tempList
 static void enterLiveMap(G_table t, G_node flownode, Temp_tempList temps)
 {
 	G_enter(t, flownode, temps);
 }
 
+// lookup node -> tempList
 static Temp_tempList lookupLiveMap(G_table t, G_node flownode)
 {
 	return (Temp_tempList)G_look(t, flownode);
 }
 
+// insert temp into list, will return new ordered list
 static Temp_tempList insertTempList(Temp_temp temp, Temp_tempList list)
 {
 	Temp_tempList new_list, prev;
-	if (list == NULL||(unsigned)temp<(unsigned)(list->head))
+	if (list == NULL || (unsigned)temp < (unsigned)(list->head))
 	{
 		new_list = Temp_TempList(temp, list);
 	}
@@ -41,12 +45,13 @@ static Temp_tempList insertTempList(Temp_temp temp, Temp_tempList list)
 	return new_list;
 }
 
+// union two tempList, will return a new ordered list
 static Temp_tempList unionTempList(Temp_tempList l1, Temp_tempList l2)
 {
-	Temp_tempList list=NULL;
+	Temp_tempList list = NULL;
 	while (l1)
 	{
-		list=insertTempList(l1->head, list);
+		list = insertTempList(l1->head, list);
 		l1 = l1->tail;
 	}
 	while (l2)
@@ -56,6 +61,7 @@ static Temp_tempList unionTempList(Temp_tempList l1, Temp_tempList l2)
 	return list;
 }
 
+// diff l1 l2, will return a new ordered list
 static Temp_tempList diffTempList(Temp_tempList l1, Temp_tempList l2)
 {
 	Temp_tempList list = NULL, temp = NULL, prev;
@@ -106,6 +112,7 @@ static Temp_tempList diffTempList(Temp_tempList l1, Temp_tempList l2)
 	return list;
 }
 
+// compare two tempList, if same then true
 static bool sameTempList(Temp_tempList l1, Temp_tempList l2)
 {
 	while (l1&&l2)
@@ -122,6 +129,7 @@ static bool sameTempList(Temp_tempList l1, Temp_tempList l2)
 	return TRUE;
 }
 
+// free the whole list
 static void freeTempList(Temp_tempList list)
 {
 	Temp_tempList temp;
@@ -134,6 +142,25 @@ static void freeTempList(Temp_tempList list)
 	return;
 }
 
+typedef struct TAB_table_ *T_table;
+
+static T_table T_empty(void)
+{
+	return TAB_empty();
+}
+
+void T_enter(T_table t, Temp_temp temp, void *value)
+{
+	TAB_enter(t, temp, value);
+}
+
+G_node T_look(T_table t, Temp_temp temp)
+{
+	return (G_node)TAB_look(t, temp);
+}
+
+
+// constructor for Live_moveList
 Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail)
 {
 	Live_moveList p = (Live_moveList)checked_malloc(sizeof *p);
@@ -142,14 +169,14 @@ Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail)
 	p->tail = tail;
 	return p;
 }
+
 // the temporary is represented by n
 Temp_temp Live_gtemp(G_node n)
 {
 	return G_nodeInfo(n);
 }
-// flow: flowgraph
-// liveness analysis
 
+// liveness analysis with flowgraph
 struct Live_graph Live_liveness(G_graph flow)
 {
 	// iter through the flow graph
@@ -157,15 +184,95 @@ struct Live_graph Live_liveness(G_graph flow)
 	G_table in_table = G_empty();
 	G_table out_table = G_empty();
 	G_nodeList list;
-	int all_same;
+	bool all_same;
+	// construct liveness map
 	while (1)
 	{
-		all_same = 1;
+		all_same = TRUE;
 		list = G_nodes(flow);
-		Temp_tempList in, out, in_next, out_next;
+		G_nodeList succ;
+		Temp_tempList in, out, in_next, out_next, def, use, temp, in_succ;
 		for (; list; list = list->tail)
 		{
-			
+			// in out
+			in = lookupLiveMap(in_table, list->head);
+			out = lookupLiveMap(out_table, list->head);
+			// def use
+			def = FG_def(list->head);
+			use = FG_use(list->head);
+			// in[n] = use[n] U ( out[n] - def[n] )
+			temp = diffTempList(out, def);
+			in_next = unionTempList(temp, use);
+			freeTempList(temp);
+			// out[n] U ( in[s] )
+			succ = G_succ(list->head);
+			out_next = NULL;
+			for (; succ; succ = succ->tail)
+			{
+				in_succ = lookupLiveMap(in_table, succ->head);
+				temp = out_next;
+				out_next = unionTempList(out_next, in_succ);
+				freeTempList(temp);
+			}
+			if (!(sameTempList(in, in_next) && sameTempList(out, out_next)))
+			{
+				all_same = FALSE;
+			}
+			freeTempList(in);
+			freeTempList(out);
+			enterLiveMap(in_table, list->head, in_next);
+			enterLiveMap(out_table, list->head, out_next);
+		}
+		if (all_same)
+		{
+			break;
 		}
 	}
+	list = G_nodes(flow);
+	T_table temp_table = T_empty();
+	G_graph interference = G_Graph();
+	Live_moveList moveList=NULL;
+	// construct interference graph
+	for (; list; list = list->tail)
+	{
+		Temp_tempList def, live;
+		live = lookupLiveMap(out_table, list->head);
+		def = FG_def(list->head);
+		// usually, def(n) contain 0 or 1 temp, but to cover all cases, I iter the def
+		for (; def; def = def->tail)
+		{
+			G_node node, adj;
+			node = T_look(temp_table, def->head);
+			if (node == NULL)
+			{
+				node = G_Node(interference, def->head);
+				T_enter(temp_table, def->head, node);
+			}
+			Temp_tempList out;
+			out = lookupLiveMap(out_table, list->head);
+			for (; out; out = out->tail)
+			{
+				adj = T_look(temp_table, out->head);
+				if (adj == NULL)
+				{
+					adj = G_Node(interference, out->head);
+					T_enter(temp_table, out->head, adj);
+				}
+				if (FG_isMove(list->head))
+				{
+					Temp_temp src = ((AS_instr)G_nodeInfo(list->head))->u.MOVE.src->head;
+					if (src == out->head)
+					{
+						moveList = Live_MoveList(adj, node, moveList);
+					}
+				}
+				G_addEdge(node, adj);
+				G_addEdge(adj, node);
+			}
+		}
+	}
+	struct Live_graph live_graph;
+	live_graph.graph = interference;
+	live_graph.moves = moveList;
+	return live_graph;
 }
