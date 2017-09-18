@@ -4,6 +4,7 @@
 #include "graph.h"
 #include "flowgraph.h"
 #include "table.h"
+#include "worklist.h"
 #include "liveness.h"
 // map node -> tempList
 static void enterLiveMap(G_table t, G_node flownode, Temp_tempList temps)
@@ -142,24 +143,6 @@ static void freeTempList(Temp_tempList list)
 	return;
 }
 
-typedef struct TAB_table_ *T_table;
-
-static T_table T_empty(void)
-{
-	return TAB_empty();
-}
-
-void T_enter(T_table t, Temp_temp temp, void *value)
-{
-	TAB_enter(t, temp, value);
-}
-
-G_node T_look(T_table t, Temp_temp temp)
-{
-	return (G_node)TAB_look(t, temp);
-}
-
-
 // constructor for Live_moveList
 Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail)
 {
@@ -171,12 +154,14 @@ Live_moveList Live_MoveList(G_node src, G_node dst, Live_moveList tail)
 }
 
 // the temporary is represented by n
-Temp_temp Live_gtemp(G_node n)
+tempInfo Live_gtemp(G_node n)
 {
 	return G_nodeInfo(n);
 }
 
 // liveness analysis with flowgraph
+// the pseudo codes for register reallocation in the textbook were kind of misunderstanding
+// I combined liveness-analysis and build procedure
 struct Live_graph Live_liveness(G_graph flow)
 {
 	// iter through the flow graph
@@ -231,7 +216,8 @@ struct Live_graph Live_liveness(G_graph flow)
 	list = G_nodes(flow);
 	T_table temp_table = T_empty();
 	G_graph interference = G_Graph();
-	Live_moveList moveList=NULL;
+	//Live_moveList moveList=NULL;
+	moveList worklistMoves=NULL;
 	// construct interference graph
 	for (; list; list = list->tail)
 	{
@@ -245,7 +231,8 @@ struct Live_graph Live_liveness(G_graph flow)
 			node = T_look(temp_table, def->head);
 			if (node == NULL)
 			{
-				node = G_Node(interference, def->head);
+				tempInfo info=TempInfo(def->head);
+				node = G_Node(interference, info);
 				T_enter(temp_table, def->head, node);
 			}
 			Temp_tempList out;
@@ -255,15 +242,18 @@ struct Live_graph Live_liveness(G_graph flow)
 				adj = T_look(temp_table, out->head);
 				if (adj == NULL)
 				{
-					adj = G_Node(interference, out->head);
+					tempInfo info = TempInfo(out->head);
+					adj = G_Node(interference, info);
 					T_enter(temp_table, out->head, adj);
 				}
 				if (FG_isMove(list->head))
 				{
+					worklistMoves = InsertMoveList(worklistMoves,MoveInstr());
 					Temp_temp src = ((AS_instr)G_nodeInfo(list->head))->u.MOVE.src->head;
 					if (src == out->head)
 					{
-						moveList = Live_MoveList(adj, node, moveList);
+						//moveList = Live_MoveList(adj, node, moveList);
+						continue;
 					}
 				}
 				G_addEdge(node, adj);
@@ -273,6 +263,7 @@ struct Live_graph Live_liveness(G_graph flow)
 	}
 	struct Live_graph live_graph;
 	live_graph.graph = interference;
-	live_graph.moves = moveList;
+	//live_graph.moves = moveList;
+	live_graph.moves = NULL;
 	return live_graph;
 }

@@ -1,8 +1,9 @@
 /* define valid mutually recursive functions */
-let
+let 
+var x:=1
 
 function do_nothing1(a: int, b: string):int=
-		(do_nothing2(a+1);0)
+		(do_nothing2(a+1);x=2;0)
 
 function do_nothing2(d: int):string =
 		(do_nothing1(d, "str");" ")

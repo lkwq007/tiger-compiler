@@ -70,6 +70,22 @@ G_nodeList G_nodes(G_graph g)
 	return g->mynodes;
 }
 
+void G_nodes_reverse(G_graph g)
+{
+	G_nodeList temp, list, prev=NULL;
+	list = g->mynodes;
+	for (; list; list=temp)
+	{
+		temp = list->tail;
+		list->tail = prev;
+		prev = list;
+	}
+	temp = g->mynodes;
+	g->mynodes = prev;
+	g->mylast = temp;
+	return;
+}
+
 /* return true if a is in l list */
 bool G_inNodeList(G_node a, G_nodeList l) {
 	G_nodeList p;

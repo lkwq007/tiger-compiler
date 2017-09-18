@@ -101,5 +101,7 @@ G_graph FG_AssemFlowGraph(AS_instrList il)
 		}
 		temp = temp->tail;
 	}
+	// reverse node list for liveness analysis
+	G_nodes_reverse(graph);
 	return graph;
 }
